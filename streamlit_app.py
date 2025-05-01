@@ -12,7 +12,7 @@ ticker_input = st.text_input("Enter Ticker Symbol", "GME").upper()
 # ----------- Load Data with Caching -----------
 @st.cache_data(ttl=3600)
 def load_price_data(ticker):
-    df = yf.download(ticker, period="200d")
+    df = yf.download(ticker, period="3y")  # Changed to last 3 years
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [col[0] for col in df.columns]
     return df
@@ -21,16 +21,13 @@ def load_price_data(ticker):
 def load_fundamentals(ticker):
     ticker_obj = yf.Ticker(ticker)
     info = ticker_obj.info
-    bs = ticker_obj.balance_sheet
     try:
-        dta_ratio = round(bs.loc["Total Liab"][0] / bs.loc["Total Assets"][0], 2)
+        return {
+            "EPS (TTM)": info.get("trailingEps", "N/A"),
+            "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A"
+        }
     except Exception:
-        dta_ratio = "N/A"
-    return {
-        "EPS (TTM)": info.get("trailingEps", "N/A"),
-        "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
-        "Debt-to-Assets Ratio": dta_ratio
-    }
+        return {}
 
 @st.cache_data(ttl=3600)
 def load_eps_history(ticker):
@@ -99,13 +96,24 @@ trend = base.mark_line(color='#FF9933', opacity=0.5).encode(
     tooltip=['Date:T', 'Trend:Q']
 )
 
-st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
+# Add legend
+ma_legend = alt.Chart(pd.DataFrame({
+    'MA': ['5-day MA', '25-day MA', '200-day MA'],
+    'Color': ['blue', 'green', 'red']
+})).mark_point(filled=True, size=100).encode(
+    color='Color:N',
+    shape='MA:N'
+).properties(width=0)
 
-# ----------- Average Volume Chart -----------
+st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend + ma_legend).properties(height=400), use_container_width=True)
+
+# ----------- Average Volume Chart ----------- 
 st.subheader(f"📊 Daily Volume (Last 30 Days) - {ticker_input}")
 
 avg_volume = last_30['Volume'].mean()
-volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2").encode(
+
+# Volume chart styled like price chart
+volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2", opacity=0.6).encode(
     x='Date:T',
     y=alt.Y('Volume:Q', title='Volume')
 ) + alt.Chart(price_chart_data).mark_rule(color="red", strokeDash=[4,2]).encode(
