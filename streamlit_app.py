@@ -110,7 +110,7 @@ st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']].iloc[::-1])
 # ----------- Price Chart with Trend & MAs -----------
 st.subheader("📈 Price Chart with Trend & MAs")
 
-price_chart_data = last_30.reset_index()
+price_chart_data = df.reset_index()
 
 base = alt.Chart(price_chart_data).encode(
     x='Date:T'
@@ -120,17 +120,21 @@ price_line = base.mark_line(color='white', strokeWidth=3).encode(
     y=alt.Y('Close:Q', scale=alt.Scale(domain=[0, price_chart_data['Close'].max() * 1.1]), title='Price')
 )
 
-ma_5 = base.mark_line(color='#5A9BD5', strokeDash=[5, 3]).encode(
+ma_5 = base.mark_line(color='#5A9BD5', strokeDash=[5, 3], size=3).encode(
     y='MA_5:Q', tooltip=['Date:T', 'Close:Q', 'MA_5:Q']
 )
-ma_25 = base.mark_line(color='#888888', strokeDash=[3, 3]).encode(
+ma_25 = base.mark_line(color='#888888', strokeDash=[3, 3], size=3).encode(
     y='MA_25:Q', tooltip=['Date:T', 'Close:Q', 'MA_25:Q']
 )
-ma_200 = base.mark_line(color='#FF9933', opacity=0.5).encode(
+ma_200 = base.mark_line(color='#FF9933', opacity=0.5, size=3).encode(
     y='MA_200:Q', tooltip=['Date:T', 'Close:Q', 'MA_200:Q']
 )
+trend_line = base.mark_line(color='orange', size=2).encode(
+    y='Trend:Q', tooltip=['Date:T', 'Trend:Q']
+)
 
-st.altair_chart((price_line + ma_5 + ma_25 + ma_200).properties(height=400), use_container_width=True)
+# Add legend for moving averages and trend line
+st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend_line).properties(height=400), use_container_width=True)
 
 # ----------- Buy/Sell/Hold Signal ----------- 
 # Placeholder for the signal logic (you can adjust this)
@@ -153,6 +157,14 @@ st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
 
 # ----------- Financial Metrics ----------- 
 st.subheader("💵 Key Financial Metrics")
+# Ensure numeric values are handled as numbers
+for key, value in financials.items():
+    if isinstance(value, str):
+        try:
+            financials[key] = float(value.replace(",", "").replace("$", "").replace("%", ""))
+        except ValueError:
+            pass  # If conversion fails, keep the value as string
+
 financial_metrics = pd.DataFrame.from_dict(financials, orient='index', columns=["Value"]).sort_values(by="Value", ascending=False)
 st.table(financial_metrics)
 
