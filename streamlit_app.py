@@ -6,14 +6,14 @@ import altair as alt
 from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
-st.title("📊 Stock Tracker Dashboard")
+st.title("\U0001F4C8 Stock Tracker Dashboard")
 
 menu = st.selectbox("Select Page", ["Stock Dashboard", "Options & Implied Volatility", "Earnings Calendar"], key="menu")
 
 # ---------- Common Functions ----------
 @st.cache_data(ttl=3600)
-def load_price_data(ticker):
-    df = yf.download(ticker, period="3y")
+def load_price_data(ticker, period="1y"):
+    df = yf.download(ticker, period=period)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [col[0] for col in df.columns]
     return df
@@ -78,9 +78,24 @@ def add_analytics(df):
 if menu == "Stock Dashboard":
     ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
 
-    df = load_price_data(ticker_symbol)
+    time_range = st.selectbox(
+        "Select Time Range:",
+        options=["1M", "3M", "1Y", "5Y", "10Y"],
+        index=2  # Default to 1Y
+    )
+
+    period_map = {
+        "1M": "1mo",
+        "3M": "3mo",
+        "1Y": "1y",
+        "5Y": "5y",
+        "10Y": "10y"
+    }
+    selected_period = period_map[time_range]
+
+    df = load_price_data(ticker_symbol, period=selected_period)
     df = add_analytics(df)
-    last_30 = df.tail(30)
+    last_30 = df.tail(min(30, len(df)))
     financials = load_fundamentals(ticker_symbol)
     q_eps, y_eps = load_eps_history(ticker_symbol)
 
@@ -101,10 +116,10 @@ if menu == "Stock Dashboard":
         <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;">
         {} 
         </marquee>
-        """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}"> ${m["price_change"]:+.2f} ({m["percent_change"]:+.2f}%)</span></span></div>' 
+        """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}"> {m["price_change"]:+.2f} ({m["percent_change"]:+.2f}%)</span></span></div>' 
                             for m in ticker_data if isinstance(m["percent_change"], (float, int))])), unsafe_allow_html=True)
 
-    st.subheader("📈 Price Chart (3-Year)")
+    st.subheader(f"\U0001F4C8 Price Chart ({time_range})")
     show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
     show_ma_25 = st.checkbox("Show 25-Day MA", value=True)
     show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
@@ -133,23 +148,23 @@ if menu == "Stock Dashboard":
 
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
-    st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
+    st.subheader(f"\U0001F4A1 {ticker_symbol} Buy/Hold/Sell Signal")
     signal = df['Signal'].iloc[-1]
     st.markdown(f"**Signal:** {signal}")
 
-    st.subheader("📊 Daily Volume (Last 30 Days)")
+    st.subheader("\U0001F4CA Daily Volume (Last 30 Days)")
     volume_chart_data = last_30.reset_index()
     avg_volume = last_30['Volume'].mean()
     volume_base = alt.Chart(volume_chart_data).encode(x='Date:T')
     bars = volume_base.mark_bar(color="#4A90E2").encode(y=alt.Y('Volume:Q'), tooltip=['Date:T', 'Volume:Q'])
     avg_line = volume_base.mark_rule(color='red', strokeDash=[4, 2]).encode(y=alt.Y('Volume:Q')).transform_calculate(Volume=str(avg_volume))
     st.altair_chart((bars + avg_line).properties(height=200), use_container_width=True)
-    st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
+    st.caption(f"\U0001F53B Average Volume: {int(avg_volume):,}")
 
-    st.subheader("📅 Historical Price Table (Last 30 Days)")
+    st.subheader("\U0001F4C5 Historical Price Table (Last 30 Days)")
     st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']].sort_index(ascending=False))
 
-    st.subheader("📉 Average Price Metrics (Last 30 Days)")
+    st.subheader("\U0001F4C9 Average Price Metrics (Last 30 Days)")
     st.markdown(f"""
     - **Average Open:** ${last_30['Open'].mean():.2f}  
     - **Average High:** ${last_30['High'].mean():.2f}  
@@ -157,12 +172,12 @@ if menu == "Stock Dashboard":
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
 
-    st.subheader("💵 Key Financial Metrics")
+    st.subheader("\U0001F4B5 Key Financial Metrics")
     metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
     metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
     st.dataframe(metrics_df)
 
-    st.subheader("🧾 Earnings Per Share (EPS)")
+    st.subheader("\U0001F9BE Earnings Per Share (EPS)")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Last 8 Quarters EPS:**")
@@ -186,7 +201,7 @@ if menu == "Stock Dashboard":
 
 # ---------- Options Page ----------
 elif menu == "Options & Implied Volatility":
-    st.title("🛠️ Options & Implied Volatility")
+    st.title("\U0001F6E0️ Options & Implied Volatility")
     ticker_symbol = st.text_input("Enter Stock Ticker:", "AAPL").upper()
 
     @st.cache_data(ttl=3600)
@@ -215,7 +230,7 @@ elif menu == "Options & Implied Volatility":
 
 # ---------- Earnings Calendar Page ----------
 elif menu == "Earnings Calendar":
-    st.title("📅 Earnings Calendar")
+    st.title("\U0001F4C5 Earnings Calendar")
     earnings_calendar_data = pd.DataFrame({
         'Ticker': ['AAPL', 'GOOG', 'TSLA'],
         'Date': ['2025-05-01', '2025-05-02', '2025-05-03'],
