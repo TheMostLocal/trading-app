@@ -25,6 +25,26 @@ def load_fundamentals(ticker):
     return {
         "EPS (TTM)": info.get("trailingEps", "N/A"),
         "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
+        "Gross Profit Margin": f"{(info.get('grossMargins', 0) * 100):.2f}%" if info.get('grossMargins') else "N/A",
+        "Operating Margin": f"{(info.get('operatingMargins', 0) * 100):.2f}%" if info.get('operatingMargins') else "N/A",
+        "Net Profit Margin": f"{(info.get('profitMargins', 0) * 100):.2f}%" if info.get('profitMargins') else "N/A",
+        "Return on Assets (ROA)": f"{(info.get('returnOnAssets', 0) * 100):.2f}%" if info.get('returnOnAssets') else "N/A",
+        "Return on Equity (ROE)": f"{(info.get('returnOnEquity', 0) * 100):.2f}%" if info.get('returnOnEquity') else "N/A",
+        "P/E Ratio": f"{info.get('trailingPE', 'N/A')}",
+        "Price-to-Sales (P/S) Ratio": f"{info.get('priceToSalesTrailing12Months', 'N/A')}",
+        "Enterprise Value": f"${info.get('enterpriseValue', 0):,}" if info.get('enterpriseValue') else "N/A",
+        "EV/EBITDA": f"{info.get('enterpriseToEbitda', 'N/A')}",
+        "Current Ratio": f"{info.get('currentRatio', 'N/A')}",
+        "Quick Ratio": f"{info.get('quickRatio', 'N/A')}",
+        "Interest Coverage Ratio": f"{info.get('ebitda', 'N/A')} / {info.get('interestExpense', 'N/A')}",
+        "Asset Turnover Ratio": f"{info.get('assetTurnover', 'N/A')}",
+        "Inventory Turnover": f"{info.get('inventoryTurnover', 'N/A')}",
+        "Market Cap": f"${info.get('marketCap', 0):,}" if info.get('marketCap') else "N/A",
+        "Beta": f"{info.get('beta', 'N/A')}",
+        "52-Week High": f"${info.get('fiftyTwoWeekHigh', 'N/A')}",
+        "52-Week Low": f"${info.get('fiftyTwoWeekLow', 'N/A')}",
+        "Shares Outstanding": f"{info.get('sharesOutstanding', 'N/A'):,}" if info.get('sharesOutstanding') else "N/A",
+        "Dividend Yield": f"{(info.get('dividendYield', 0) * 100):.2f}%" if info.get('dividendYield') else "N/A",
     }
 
 @st.cache_data(ttl=3600)
