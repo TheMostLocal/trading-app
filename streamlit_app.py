@@ -4,140 +4,164 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-# Function to load price data and fundamentals
-def load_price_data(ticker):
-    df = yf.download(ticker, period="3y")
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = [col[0] for col in df.columns]
-    return df
+# ----------- Sidebar Navigation ----------- 
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ("Stock Dashboard", "Options & Implied Volatility"))
 
-def load_fundamentals(ticker):
-    ticker_obj = yf.Ticker(ticker)
-    info = ticker_obj.info
-    return {
-        "Market Cap": f"${info.get('marketCap', 0):,}",
-        "Trailing P/E": info.get("trailingPE", "N/A"),
-        "Forward P/E": info.get("forwardPE", "N/A"),
-        "PEG Ratio": info.get("pegRatio", "N/A"),
-        "Price/Sales (TTM)": info.get("priceToSalesTrailing12Months", "N/A"),
-        "Price/Book (MRQ)": info.get("priceToBook", "N/A"),
-        "EPS (TTM)": info.get("trailingEps", "N/A"),
-        "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
-        "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
-        "Return on Equity (ROE)": info.get("returnOnEquity", "N/A"),
-        "Operating Margin": info.get("operatingMargins", "N/A")
-    }
-
-# Sidebar for navigation between pages
-def app():
-    st.set_page_config(page_title="Stock Dashboard", layout="wide")
-    page = st.sidebar.selectbox("Select a Page", ["Stock Dashboard", "Options & Implied Volatility"])
-
-    if page == "Stock Dashboard":
-        stock_dashboard()
-    elif page == "Options & Implied Volatility":
-        options_page()
-
-# Stock Dashboard
-def stock_dashboard():
+# ----------- Stock Dashboard ----------- 
+if page == "Stock Dashboard":
+    st.set_page_config(page_title="Stock Tracker Dashboard", layout="wide")
     st.title("📊 Stock Tracker Dashboard")
 
     # ----------- Ticker Selection -----------
     ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
 
+    # ----------- Load Data with Caching -----------
+    @st.cache_data(ttl=3600)
+    def load_price_data(ticker):
+        df = yf.download(ticker, period="3y")
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [col[0] for col in df.columns]
+        return df
+
+    @st.cache_data(ttl=3600)
+    def load_fundamentals(ticker):
+        ticker_obj = yf.Ticker(ticker)
+        info = ticker_obj.info
+        return {
+            "Market Cap": f"${info.get('marketCap', 0):,}",
+            "Trailing P/E": info.get("trailingPE", "N/A"),
+            "Forward P/E": info.get("forwardPE", "N/A"),
+            "PEG Ratio": info.get("pegRatio", "N/A"),
+            "Price/Sales (TTM)": info.get("priceToSalesTrailing12Months", "N/A"),
+            "Price/Book (MRQ)": info.get("priceToBook", "N/A"),
+            "EPS (TTM)": info.get("trailingEps", "N/A"),
+            "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
+            "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
+            "Return on Equity (ROE)": info.get("returnOnEquity", "N/A"),
+            "Operating Margin": info.get("operatingMargins", "N/A")
+        }
+
+    @st.cache_data(ttl=3600)
+    def load_eps_history(ticker):
+        ticker_obj = yf.Ticker(ticker)
+        try:
+            q_eps = ticker_obj.quarterly_earnings
+            y_eps = ticker_obj.earnings
+        except Exception:
+            q_eps = pd.DataFrame()
+            y_eps = pd.DataFrame()
+        return q_eps, y_eps
+
+    # ----------- Indicator Calculations -----------
+    def add_analytics(df):
+        df['MA_5'] = df['Close'].rolling(window=5).mean()
+        df['MA_25'] = df['Close'].rolling(window=25).mean()
+        df['MA_200'] = df['Close'].rolling(window=200).mean()
+
+        df_reset = df.reset_index()
+        df_reset['Date_ordinal'] = df_reset['Date'].map(pd.Timestamp.toordinal)
+        coeffs = np.polyfit(df_reset['Date_ordinal'], df_reset['Close'], 1)
+        df['Trend'] = coeffs[0] * df.index.map(pd.Timestamp.toordinal) + coeffs[1]
+
+        # Buy/Hold/Sell Signal based on Moving Average Crossover
+        latest_ma_5 = df['MA_5'].iloc[-1]
+        latest_ma_25 = df['MA_25'].iloc[-1]
+        if latest_ma_5 > latest_ma_25:
+            df['Signal'] = 'Buy'
+        elif latest_ma_5 < latest_ma_25:
+            df['Signal'] = 'Sell'
+        else:
+            df['Signal'] = 'Hold'
+        
+        return df
+
     # ----------- Load Data -----------
     df = load_price_data(ticker_symbol)
-    financials = load_fundamentals(ticker_symbol)
+    df = add_analytics(df)
     last_30 = df.tail(30)
+    financials = load_fundamentals(ticker_symbol)
+    q_eps, y_eps = load_eps_history(ticker_symbol)
 
-    # ----------- Display Stock Information ----------- 
-    st.subheader(f"Stock Information for {ticker_symbol}")
-    st.dataframe(financials)
+    # ----------- Display Rolling Ticker List at the Top ----------- 
+    ticker_list = ['GME', 'AAPL', 'MSFT', 'TSLA', 'AMZN']  # Placeholder
+    st.markdown("""
+        <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;"> 
+        {} 
+        </marquee>
+        """.format(', '.join(ticker_list)), unsafe_allow_html=True)
 
     # ----------- Price Chart (3-Year) -----------
     st.subheader("📈 Price Chart (3-Year)")
+
     price_chart_data = df.reset_index()
+
     line_chart = alt.Chart(price_chart_data).mark_line().encode(
         x='Date:T',
         y=alt.Y('Close:Q', title='Price'),
         color=alt.value('white'),
-        tooltip=['Date:T', 'Close:Q']
+        tooltip=['Date:T', 'Close:Q', 'MA_5:Q', 'MA_25:Q', 'MA_200:Q']
     ).properties(height=400)
 
-    st.altair_chart(line_chart.interactive(), use_container_width=True)
+    ma_5 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_5:Q'
+    )
 
-# Options & Implied Volatility Page
-def options_page():
-    import scipy.stats as stats
-    # Function to fetch options data using yfinance
-    def fetch_options_data(ticker_symbol):
-        ticker = yf.Ticker(ticker_symbol)
-        expiration_dates = ticker.options
-        st.write(f"Available Expiration Dates: {expiration_dates}")
-        option_chain = ticker.option_chain(expiration_dates[0])  # Get the first expiration date
-        calls = option_chain.calls
-        puts = option_chain.puts
-        return calls, puts
+    ma_25 = alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_25:Q'
+    )
 
-    # Black-Scholes Model for calculating implied volatility
-    def black_scholes_implied_volatility(S, K, T, r, market_price, option_type='call'):
-        sigma = 0.2  # Start with 20% volatility
-        tolerance = 1e-5  # Convergence tolerance
-        max_iterations = 100
-        
-        for i in range(max_iterations):
-            d1 = (math.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * math.sqrt(T))
-            d2 = d1 - sigma * math.sqrt(T)
-            if option_type == 'call':
-                option_price = S * stats.norm.cdf(d1) - K * math.exp(-r * T) * stats.norm.cdf(d2)
-            elif option_type == 'put':
-                option_price = K * math.exp(-r * T) * stats.norm.cdf(-d2) - S * stats.norm.cdf(-d1)
-            vega = S * math.sqrt(T) * stats.norm.pdf(d1)
-            price_diff = option_price - market_price
-            if abs(price_diff) < tolerance:
-                return sigma
-            sigma = sigma - price_diff / vega
-        return sigma
+    ma_200 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_200:Q'
+    )
 
-    def calculate_implied_volatility(ticker_symbol):
-        calls, puts = fetch_options_data(ticker_symbol)
-        r = 0.01  # Risk-free rate assumption
-        ticker = yf.Ticker(ticker_symbol)
-        stock_price = ticker.history(period="1d")['Close'].iloc[0]
-        implied_volatilities = []
-        
-        for i in range(min(5, len(calls))):
-            call_option = calls.iloc[i]
-            strike = call_option['strike']
-            market_price = call_option['lastPrice']
-            T = (pd.to_datetime(call_option['expiration']) - pd.to_datetime('today')).days / 365
-            iv = black_scholes_implied_volatility(stock_price, strike, T, r, market_price, option_type='call')
-            implied_volatilities.append({
-                'strike': strike,
-                'market_price': market_price,
-                'implied_volatility': iv
-            })
-        return implied_volatilities
+    st.altair_chart((line_chart + ma_5 + ma_25 + ma_200).interactive(), use_container_width=True)
 
-    st.set_page_config(page_title="Options & Implied Volatility", layout="wide")
-    st.title("📈 Stock Options and Implied Volatility")
+    # ----------- Volume Chart ----------- 
+    st.subheader("📊 Daily Volume (Last 30 Days)")
 
-    # Ticker input for options
-    ticker_symbol = st.text_input("Enter Stock Ticker (e.g., AAPL, GME):", "AAPL").upper()
+    volume_chart_data = last_30.reset_index()
+    avg_volume = last_30['Volume'].mean()
 
-    # Calculate and display implied volatilities
-    implied_volatilities = calculate_implied_volatility(ticker_symbol)
-    st.write(f"Implied Volatilities for {ticker_symbol}:")
-    st.write(implied_volatilities)
+    volume_base = alt.Chart(volume_chart_data).encode(x='Date:T')
 
-    # Display the options data (calls and puts)
-    calls, puts = fetch_options_data(ticker_symbol)
+    bars = volume_base.mark_bar(color="#4A90E2").encode(
+        y=alt.Y('Volume:Q', title='Volume'),
+        tooltip=['Date:T', 'Volume:Q']
+    )
 
-    st.subheader(f"Call Options Data for {ticker_symbol}:")
-    st.dataframe(calls)
+    avg_line = volume_base.mark_rule(color='red', strokeDash=[4, 2]).encode(
+        y=alt.Y('Volume:Q')
+    ).transform_calculate(
+        Volume=str(avg_volume)
+    )
 
-    st.subheader(f"Put Options Data for {ticker_symbol}:")
-    st.dataframe(puts)
+    st.altair_chart((bars + avg_line).properties(height=200), use_container_width=True)
+    st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
 
-if __name__ == '__main__':
-    app()
+    # ----------- Historical Price Table ----------- 
+    st.subheader("📅 Historical Price Table (Last 30 Days)")
+    st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']].sort_index(ascending=False))
+
+    # ----------- Financial Metrics Table ----------- 
+    st.subheader("💵 Key Financial Metrics")
+
+    metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
+    metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
+    st.dataframe(metrics_df)
+
+    # ----------- Buy/Hold/Sell Signal ----------- 
+    st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
+    signal = df['Signal'].iloc[-1]  # Get the latest signal
+    st.markdown(f"**Signal:** {signal}")
+
+# ----------- Options Page ----------- 
+elif page == "Options & Implied Volatility":
+    # Placeholder for your options data and implied volatility code
+    st.title("📈 Options & Implied Volatility")
+    st.markdown("Here you can see the options data and implied volatility for the selected stock.")
+    st.write("Options and implied volatility data will be displayed here.")
+    
+    # Add the options and implied volatility functionality as described earlier
+    # For example, call the functions that retrieve options and calculate implied volatility
+
