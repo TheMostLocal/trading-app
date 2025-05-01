@@ -101,7 +101,7 @@ if menu == "Stock Dashboard":
         <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;">
         {} 
         </marquee>
-        """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price_change"]:+.2f} (${m["percent_change"]:+.2f}%)</span></span></div>' 
+        """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}"> ${m["price_change"]:+.2f} ({m["percent_change"]:+.2f}%)</span></span></div>' 
                             for m in ticker_data if isinstance(m["percent_change"], (float, int))])), unsafe_allow_html=True)
 
     st.subheader("📈 Price Chart (3-Year)")
