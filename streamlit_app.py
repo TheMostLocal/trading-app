@@ -39,8 +39,8 @@ def load_eps_history(ticker):
         q_eps = ticker_obj.quarterly_earnings
         y_eps = ticker_obj.earnings
     except Exception:
-        q_eps = pd.DataFrame()
-        y_eps = pd.DataFrame()
+        q_eps = pd.DataFrame()  # Ensure it's a DataFrame even when there's an error
+        y_eps = pd.DataFrame()  # Ensure it's a DataFrame even when there's an error
     return q_eps, y_eps
 
 # ----------- Calculate Indicators -----------
@@ -111,14 +111,14 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("**Last 8 Quarters EPS:**")
-    if not q_eps.empty:
+    if isinstance(q_eps, pd.DataFrame) and not q_eps.empty:
         st.table(q_eps.head(8)[['Earnings']])
     else:
         st.warning("Quarterly EPS data unavailable.")
 
 with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
-    if not y_eps.empty:
+    if isinstance(y_eps, pd.DataFrame) and not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
         st.warning("Annual EPS data unavailable.")
