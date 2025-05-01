@@ -122,7 +122,7 @@ if menu == "Stock Dashboard":
         x='Date:T',
         y=alt.Y('Close:Q', title='Price'),
         color=alt.value('white'),
-        tooltip=['Date:T', 'Close:Q', 'MA_5:Q', 'MA_25:Q', 'MA_200:Q']
+        tooltip=['Date:T', 'Close:Q', 'MA_10:Q', 'MA_25:Q', 'MA_50:Q', 'MA_100:Q', 'MA_200:Q']
     ).properties(height=400)
 
     ma_10 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
@@ -143,7 +143,7 @@ if menu == "Stock Dashboard":
         x='Date:T', y='MA_200:Q'
     )
 
-    st.altair_chart((line_chart + ma_5 + ma_25 + ma_200).interactive(), use_container_width=True)
+    st.altair_chart((line_chart + ma_10 + ma_25 +ma_50 +ma_100 + ma_200).interactive(), use_container_width=True)
 
     # ----------- Buy/Hold/Sell Signal ----------- 
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
