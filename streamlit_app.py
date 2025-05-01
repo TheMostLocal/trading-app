@@ -111,7 +111,7 @@ trend = base.mark_line(color='#FF9933', opacity=0.5, size=3, tooltip=alt.Tooltip
 
 st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
 
-# ----------- Price Sentiment ----------- 
+# ----------- Sentiment ----------- 
 # Placeholder for Sentiment (could be based on fundamental analysis or technical indicators)
 sentiment = "Buy"  # In real scenario, it could be computed using some indicators
 st.markdown(f"**Sentiment:** {sentiment}", unsafe_allow_html=True)
@@ -165,4 +165,7 @@ st.caption(f"🔻 Average Volume: {int(last_30['Volume'].mean()):,}")
 # ----------- CSV Download Button -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
-    data
+    data=df.to_csv().encode('utf-8'),
+    file_name=f"{ticker}_stock_data.csv",
+    mime="text/csv"
+)
