@@ -80,7 +80,7 @@ q_eps, y_eps = load_eps_history(ticker_symbol)
 
 # ----------- Display Rolling Ticker List at the Top ----------- 
 # You can include tickers from top movers or top activity manually, or fetch from a service.
-ticker_list = ['GME', 'AAPL', 'MSFT', 'TSLA', 'AMZN']  # Placeholder
+ticker_list = ['DOW', 'SPY', 'NVDA','APPL','MSFT', 'TSLA', 'AMZN']  # Placeholder
 ticker_data = []
 
 # Fetch data for top movers, including today's gain/loss
