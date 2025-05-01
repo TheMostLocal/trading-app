@@ -114,36 +114,54 @@ if menu == "Stock Dashboard":
                             for m in ticker_data if isinstance(m["percent_change"], (float, int))])), unsafe_allow_html=True)
 
     # ----------- Price Chart (3-Year) -----------
-    st.subheader("📈 Price Chart (3-Year)")
+st.subheader("📈 Price Chart (3-Year)")
 
-    price_chart_data = df.reset_index()
+# --- Indicator toggles ---
+show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
+show_ma_25 = st.checkbox("Show 25-Day MA", value=True)
+show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
+show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
+show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
 
-    line_chart = alt.Chart(price_chart_data).mark_line().encode(
-        x='Date:T',
-        y=alt.Y('Close:Q', title='Price'),
-        color=alt.value('white'),
-        tooltip=['Date:T', 'Close:Q', 'MA_10:Q', 'MA_25:Q', 'MA_50:Q', 'MA_100:Q', 'MA_200:Q']
-    ).properties(height=400)
+price_chart_data = df.reset_index()
 
-    ma_10 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_10:Q'
+base_chart = alt.Chart(price_chart_data).mark_line().encode(
+    x='Date:T',
+    y=alt.Y('Close:Q', title='Price'),
+    color=alt.value('white'),
+    tooltip=['Date:T', 'Close:Q']
+).properties(height=400)
+
+layers = [base_chart]
+
+# Add each MA if selected
+if show_ma_10:
+    layers.append(
+        alt.Chart(price_chart_data).mark_line(color='cyan', strokeDash=[4, 2]).encode(
+            x='Date:T', y='MA_10:Q')
+    )
+if show_ma_25:
+    layers.append(
+        alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4, 2]).encode(
+            x='Date:T', y='MA_25:Q')
+    )
+if show_ma_50:
+    layers.append(
+        alt.Chart(price_chart_data).mark_line(color='purple', strokeDash=[4, 2]).encode(
+            x='Date:T', y='MA_50:Q')
+    )
+if show_ma_100:
+    layers.append(
+        alt.Chart(price_chart_data).mark_line(color='red', strokeDash=[4, 2]).encode(
+            x='Date:T', y='MA_100:Q')
+    )
+if show_ma_200:
+    layers.append(
+        alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4, 2]).encode(
+            x='Date:T', y='MA_200:Q')
     )
 
-    ma_25 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_25:Q'
-    )
-    ma_50 = alt.Chart(price_chart_data).mark_line(color='red', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_50:Q'
-    )
-    ma_100 = alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_100:Q'
-    )
-
-    ma_200 = alt.Chart(price_chart_data).mark_line(color='yellow', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_200:Q'
-    )
-
-    st.altair_chart((line_chart + ma_10 + ma_25 +ma_50 +ma_100 + ma_200).interactive(), use_container_width=True)
+st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
     # ----------- Buy/Hold/Sell Signal ----------- 
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
