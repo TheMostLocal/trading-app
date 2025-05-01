@@ -125,15 +125,21 @@ if menu == "Stock Dashboard":
         tooltip=['Date:T', 'Close:Q', 'MA_5:Q', 'MA_25:Q', 'MA_200:Q']
     ).properties(height=400)
 
-    ma_5 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
-        x='Date:T', y='MA_5:Q'
+    ma_10 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_10:Q'
     )
 
-    ma_25 = alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4,2]).encode(
+    ma_25 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).encode(
         x='Date:T', y='MA_25:Q'
     )
+    ma_50 = alt.Chart(price_chart_data).mark_line(color='red', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_50:Q'
+    )
+    ma_100 = alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4,2]).encode(
+        x='Date:T', y='MA_100:Q'
+    )
 
-    ma_200 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).encode(
+    ma_200 = alt.Chart(price_chart_data).mark_line(color='yellow', strokeDash=[4,2]).encode(
         x='Date:T', y='MA_200:Q'
     )
 
