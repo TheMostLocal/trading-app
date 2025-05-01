@@ -9,7 +9,12 @@ st.title("📊 GameStop (GME) Stock - Last 30 Days")
 # ----------- Load Data with Caching -----------
 @st.cache_data(ttl=3600)
 def load_price_data():
-    df = yf.download("GME", period="200d")  # Need enough data for 200 MA
+    df = yf.download("GME", period="200d")
+    
+    # Flatten MultiIndex columns if they exist
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [col[0] for col in df.columns]
+    
     return df
 
 @st.cache_data(ttl=3600)
@@ -17,18 +22,20 @@ def load_fundamentals():
     ticker = yf.Ticker("GME")
     info = ticker.info
     bs = ticker.balance_sheet
+
     try:
         dta_ratio = round(bs.loc["Total Liab"][0] / bs.loc["Total Assets"][0], 2)
     except Exception:
         dta_ratio = "N/A"
+
     financials = {
         "EPS (TTM)": info.get("trailingEps", "N/A"),
-        "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get('totalRevenue') else "N/A",
+        "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
         "Debt-to-Assets Ratio": dta_ratio
     }
     return financials
 
-# ----------- Calculate Moving Averages and Trend Line -----------
+# ----------- Calculate MAs and Trend Line -----------
 def add_analytics(df):
     df['MA_5'] = df['Close'].rolling(window=5).mean()
     df['MA_25'] = df['Close'].rolling(window=25).mean()
