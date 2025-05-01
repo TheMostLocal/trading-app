@@ -190,11 +190,3 @@ with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
     if y_eps is not None and not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
-
-# ----------- CSV Download -----------
-st.download_button(
-    label="⬇️ Download full dataset as CSV",
-    data=df.to_csv().encode('utf-8'),
-    file_name=f'{ticker_symbol.lower()}_stock_data.csv',
-    mime='text/csv',
-)
