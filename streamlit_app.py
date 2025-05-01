@@ -111,6 +111,11 @@ ma_200 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).
 
 st.altair_chart((line_chart + ma_5 + ma_25 + ma_200).interactive(), use_container_width=True)
 
+# ----------- Buy/Hold/Sell Signal (Moved under Price Chart) ----------- 
+st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
+signal = df['Signal'].iloc[-1]  # Get the latest signal
+st.markdown(f"**Signal:** {signal}")
+
 # ----------- Volume Chart -----------
 st.subheader("📊 Daily Volume (Last 30 Days)")
 
@@ -171,11 +176,6 @@ with col2:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
         st.warning("Annual EPS data unavailable.")
-
-# ----------- Buy/Hold/Sell Signal ----------- 
-st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
-signal = df['Signal'].iloc[-1]  # Get the latest signal
-st.markdown(f"**Signal:** {signal}")
 
 # ----------- CSV Download -----------
 st.download_button(
