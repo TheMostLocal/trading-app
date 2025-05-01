@@ -79,10 +79,25 @@ price_line = base.mark_line(color='white', strokeWidth=3).encode(
     y=alt.Y('Close:Q', scale=alt.Scale(domain=[0, price_chart_data['Close'].max() * 1.1]), title='Price')
 )
 
-ma_5 = base.mark_line(color='blue', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_5", type="quantitative", title="5-day MA")).encode(y='MA_5:Q')
-ma_25 = base.mark_line(color='green', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_25", type="quantitative", title="25-day MA")).encode(y='MA_25:Q')
-ma_200 = base.mark_line(color='red', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_200", type="quantitative", title="200-day MA")).encode(y='MA_200:Q')
-trend = base.mark_line(color='#FF9933', opacity=0.5).encode(y='Trend:Q')
+ma_5 = base.mark_line(color='blue', strokeDash=[5, 3], size=3).encode(
+    y='MA_5:Q',
+    tooltip=['Date:T', 'MA_5:Q']
+)
+
+ma_25 = base.mark_line(color='green', strokeDash=[5, 3], size=3).encode(
+    y='MA_25:Q',
+    tooltip=['Date:T', 'MA_25:Q']
+)
+
+ma_200 = base.mark_line(color='red', strokeDash=[5, 3], size=3).encode(
+    y='MA_200:Q',
+    tooltip=['Date:T', 'MA_200:Q']
+)
+
+trend = base.mark_line(color='#FF9933', opacity=0.5).encode(
+    y='Trend:Q',
+    tooltip=['Date:T', 'Trend:Q']
+)
 
 st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
 
