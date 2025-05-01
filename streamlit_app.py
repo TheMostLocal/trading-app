@@ -197,4 +197,7 @@ with col2:
 # ----------- CSV Download -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
-    data=df.to_csv().encode('
+    data=df.to_csv().encode('utf-8'),
+    file_name=f'{ticker_symbol}_stock_data.csv',
+    mime='text/csv',
+)
