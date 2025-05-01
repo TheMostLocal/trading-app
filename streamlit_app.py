@@ -57,8 +57,10 @@ if menu == "Stock Dashboard":
 
     # ----------- Indicator Calculations -----------
     def add_analytics(df):
-        df['MA_5'] = df['Close'].rolling(window=5).mean()
+        df['MA_10'] = df['Close'].rolling(window=10).mean()
         df['MA_25'] = df['Close'].rolling(window=25).mean()
+        df['MA_50'] = df['Close'].rolling(window=50).mean()
+        df['MA_100'] = df['Close'].rolling(window=100).mean()
         df['MA_200'] = df['Close'].rolling(window=200).mean()
 
         df_reset = df.reset_index()
@@ -67,12 +69,15 @@ if menu == "Stock Dashboard":
         df['Trend'] = coeffs[0] * df.index.map(pd.Timestamp.toordinal) + coeffs[1]
 
         # Buy/Hold/Sell Signal based on Moving Average Crossover
-        latest_ma_5 = df['MA_5'].iloc[-1]
+        latest_ma_10 = df['MA_10'].iloc[-1]
         latest_ma_25 = df['MA_25'].iloc[-1]
-        if latest_ma_5 > latest_ma_25:
+        latest_ma_50 = df['MA_50'].iloc[-1]
+        if latest_ma_10 > latest_ma_25:
             df['Signal'] = 'Buy'
-        elif latest_ma_5 < latest_ma_25:
+        elif latest_ma_10 < latest_ma_25:
             df['Signal'] = 'Sell'
+        elif latest_ma_25 > latest_ma_50:
+            df['Signal'] = 'Hold'    
         else:
             df['Signal'] = 'Hold'
         
