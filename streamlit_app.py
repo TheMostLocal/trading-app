@@ -80,7 +80,7 @@ if menu == "Stock Dashboard":
 
     time_range = st.selectbox(
         "Select Time Range:",
-        options=["1M", "3M", "1Y", "5Y", "10Y"],
+        options=["1M", "3M", "1Y", "5Y", "10Y", "ALL"],
         index=2  # Default to 1Y
     )
 
@@ -89,7 +89,8 @@ if menu == "Stock Dashboard":
         "3M": "3mo",
         "1Y": "1y",
         "5Y": "5y",
-        "10Y": "10y"
+        "10Y": "10y",
+        "ALL": "all"
     }
     selected_period = period_map[time_range]
 
