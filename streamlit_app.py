@@ -4,10 +4,10 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-st.set_page_config(page_title="GameStop (GME) Stock Tracker", layout="wide")
-st.title("📊 GameStop (GME) Stock Dashboard")
+st.set_page_config(page_title="GME Stock Dashboard", layout="wide")
+st.title("📊 GameStop (GME) Stock Tracker")
 
-# ----------- Load Data with Caching -----------
+# ----------- Load Data -----------
 @st.cache_data(ttl=3600)
 def load_price_data():
     df = yf.download("GME", period="3y")
@@ -23,13 +23,14 @@ def load_fundamentals():
         "EPS (TTM)": info.get("trailingEps", "N/A"),
         "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
         "Net Income (TTM)": f"${info.get('netIncomeToCommon', 0):,}" if info.get("netIncomeToCommon") else "N/A",
-        "Gross Profit (TTM)": f"${info.get('grossProfits', 0):,}" if info.get("grossProfits") else "N/A",
-        "Operating Margin": f"{round(info.get('operatingMargins', 0) * 100, 2)}%" if info.get("operatingMargins") else "N/A",
-        "Profit Margin": f"{round(info.get('profitMargins', 0) * 100, 2)}%" if info.get("profitMargins") else "N/A",
-        "Return on Assets": f"{round(info.get('returnOnAssets', 0) * 100, 2)}%" if info.get("returnOnAssets") else "N/A",
-        "Return on Equity": f"{round(info.get('returnOnEquity', 0) * 100, 2)}%" if info.get("returnOnEquity") else "N/A",
-        "Book Value per Share": info.get("bookValue", "N/A"),
-        "Beta": info.get("beta", "N/A")
+        "Gross Margin (%)": f"{info.get('grossMargins', 0)*100:.2f}%" if info.get("grossMargins") else "N/A",
+        "Operating Margin (%)": f"{info.get('operatingMargins', 0)*100:.2f}%" if info.get("operatingMargins") else "N/A",
+        "Return on Assets (ROA)": f"{info.get('returnOnAssets', 0)*100:.2f}%" if info.get("returnOnAssets") else "N/A",
+        "Return on Equity (ROE)": f"{info.get('returnOnEquity', 0)*100:.2f}%" if info.get("returnOnEquity") else "N/A",
+        "P/E Ratio": info.get("trailingPE", "N/A"),
+        "Price-to-Book (P/B) Ratio": info.get("priceToBook", "N/A"),
+        "Current Ratio": info.get("currentRatio", "N/A"),
+        "Quick Ratio": info.get("quickRatio", "N/A")
     }
 
 @st.cache_data(ttl=3600)
@@ -43,16 +44,29 @@ def load_eps_history():
         y_eps = pd.DataFrame()
     return q_eps, y_eps
 
-# ----------- Calculate Indicators -----------
+# ----------- Add Technical Indicators -----------
 def add_analytics(df):
     df['MA_5'] = df['Close'].rolling(window=5).mean()
     df['MA_25'] = df['Close'].rolling(window=25).mean()
     df['MA_200'] = df['Close'].rolling(window=200).mean()
-    df_reset = df.reset_index()
-    df_reset['Date_ordinal'] = df_reset['Date'].map(pd.Timestamp.toordinal)
-    coeffs = np.polyfit(df_reset['Date_ordinal'], df_reset['Close'], 1)
-    df['Trend'] = coeffs[0] * df.index.map(pd.Timestamp.toordinal) + coeffs[1]
+    df['RSI'] = compute_rsi(df['Close'])
+    df['MACD'], df['Signal_Line'] = compute_macd(df['Close'])
+    df['Trend'] = np.poly1d(np.polyfit(df.index.map(pd.Timestamp.toordinal), df['Close'], 1))(df.index.map(pd.Timestamp.toordinal))
     return df
+
+def compute_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+def compute_macd(series, fast=12, slow=26, signal=9):
+    exp1 = series.ewm(span=fast, adjust=False).mean()
+    exp2 = series.ewm(span=slow, adjust=False).mean()
+    macd = exp1 - exp2
+    signal_line = macd.ewm(span=signal, adjust=False).mean()
+    return macd, signal_line
 
 # ----------- Load Data -----------
 df = load_price_data()
@@ -61,7 +75,7 @@ last_30 = df.tail(30)
 financials = load_fundamentals()
 q_eps, y_eps = load_eps_history()
 
-# ----------- Historical Price Table -----------
+# ----------- Price Table -----------
 st.subheader("📅 Historical Price Table (Last 30 Days)")
 st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']])
 
@@ -69,37 +83,57 @@ avg_open = last_30['Open'].mean()
 avg_high = last_30['High'].mean()
 avg_low = last_30['Low'].mean()
 avg_close = last_30['Close'].mean()
+st.markdown(f"**📈 Average Prices (Last 30 Days):**  ")
+st.markdown(f"- **Open:** ${avg_open:.2f}  ")
+st.markdown(f"- **High:** ${avg_high:.2f}  ")
+st.markdown(f"- **Low:** ${avg_low:.2f}  ")
+st.markdown(f"- **Close:** ${avg_close:.2f}")
 
-st.markdown(f"**Average Open:** ${avg_open:.2f} | **High:** ${avg_high:.2f} | **Low:** ${avg_low:.2f} | **Close:** ${avg_close:.2f}")
+# ----------- Altair Chart -----------
+st.subheader("📈 3-Year Price Chart with Trend & MAs")
+price_chart_data = df.reset_index()
 
-# ----------- Price Chart -----------
-st.subheader("📈 Price Chart with Trend & Moving Averages")
-price_chart_data = last_30.reset_index()
+chart = alt.Chart(price_chart_data).transform_fold(
+    ['Close', 'MA_5', 'MA_25', 'MA_200']
+).mark_line().encode(
+    x='Date:T',
+    y='value:Q',
+    color=alt.Color('key:N', title='Legend'),
+    tooltip=[alt.Tooltip('Date:T'),
+             alt.Tooltip('Close:Q', title='Price'),
+             alt.Tooltip('MA_5:Q', title='5-day MA'),
+             alt.Tooltip('MA_25:Q', title='25-day MA'),
+             alt.Tooltip('MA_200:Q', title='200-day MA')]
+).properties(height=400)
 
-base = alt.Chart(price_chart_data).encode(x='Date:T')
-price_line = base.mark_line(color='white', strokeWidth=3).encode(y=alt.Y('Close:Q', title='Price'))
-ma_5 = base.mark_line(color='#AAAAAA', strokeDash=[5, 3]).encode(y='MA_5:Q')
-ma_25 = base.mark_line(color='#888888', strokeDash=[3, 3]).encode(y='MA_25:Q')
-trend = base.mark_line(color='#FF9933', opacity=0.5).encode(y='Trend:Q')
-
-st.altair_chart((price_line + ma_5 + ma_25 + trend).properties(height=400), use_container_width=True)
+st.altair_chart(chart, use_container_width=True)
 
 # ----------- Volume Chart -----------
 st.subheader("📊 Daily Volume (Last 30 Days)")
+volume_chart_data = last_30.reset_index()
 avg_volume = last_30['Volume'].mean()
-volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2").encode(
+
+volume_chart = alt.Chart(volume_chart_data).mark_bar(color="#4A90E2").encode(
     x='Date:T',
-    y=alt.Y('Volume:Q', title='Volume')
-) + alt.Chart(price_chart_data).mark_rule(color="red", strokeDash=[4,2]).encode(
-    y=alt.value(avg_volume)
+    y=alt.Y('Volume:Q', title='Volume'),
+    tooltip=['Date:T', 'Volume:Q']
+) + alt.Chart(volume_chart_data).mark_rule(color="red", strokeDash=[4,2]).encode(
+    y=alt.Value(avg_volume)
 )
+
 st.altair_chart(volume_chart.properties(height=200), use_container_width=True)
 st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
 
-# ----------- Financial Metrics -----------
+# ----------- Financials Summary -----------
 st.subheader("💵 Key Financial Metrics")
-metrics_df = pd.DataFrame(financials.items(), columns=['Metric', 'Value'])
-metrics_df = metrics_df.set_index('Metric')
+financial_order = [
+    "Quick Ratio", "Current Ratio", "Price-to-Book (P/B) Ratio", "P/E Ratio", 
+    "Return on Equity (ROE)", "Return on Assets (ROA)", "Operating Margin (%)", 
+    "Gross Margin (%)", "Net Income (TTM)", "Revenue (TTM)", "EPS (TTM)"
+]
+
+sorted_financials = {k: financials.get(k, 'N/A') for k in financial_order}
+metrics_df = pd.DataFrame(sorted_financials.items(), columns=["Metric", "Value"])
 st.table(metrics_df)
 
 # ----------- EPS Section -----------
@@ -107,30 +141,29 @@ st.subheader("🧾 Earnings Per Share (EPS)")
 col1, col2 = st.columns(2)
 with col1:
     st.markdown("**Last 8 Quarters EPS:**")
-    if q_eps is not None and not q_eps.empty:
+    if not q_eps.empty:
         st.table(q_eps.head(8)[['Earnings']])
     else:
         st.warning("Quarterly EPS data unavailable.")
+
 with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
-    if y_eps is not None and not y_eps.empty:
+    if not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
         st.warning("Annual EPS data unavailable.")
 
-# ----------- Investment Indicator -----------
-st.subheader("📌 Investment Indicator")
-latest_price = df['Close'].iloc[-1]
-ma_200 = df['MA_200'].iloc[-1]
-
-if latest_price > ma_200:
-    st.success(f"Current price (${latest_price:.2f}) is above the 200-day MA (${ma_200:.2f}): **Potential BUY signal**")
-elif latest_price < ma_200:
-    st.warning(f"Current price (${latest_price:.2f}) is below the 200-day MA (${ma_200:.2f}): **Potential SELL signal**")
+# ----------- Signal -----------
+st.subheader("💡 Investment Signal")
+latest = df.iloc[-1]
+if latest['Close'] > latest['MA_200']:
+    st.success("📈 Price is above 200-day MA → Potential **Buy** Signal")
+elif latest['Close'] < latest['MA_200']:
+    st.error("📉 Price is below 200-day MA → Potential **Sell** Signal")
 else:
-    st.info("Price is at the 200-day MA: **HOLD**")
+    st.info("⏸️ Price is near 200-day MA → Consider **Hold**")
 
-# ----------- CSV Download Button -----------
+# ----------- CSV Download -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
     data=df.to_csv().encode('utf-8'),
