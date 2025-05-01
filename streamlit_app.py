@@ -57,6 +57,17 @@ def add_analytics(df):
     df_reset['Date_ordinal'] = df_reset['Date'].map(pd.Timestamp.toordinal)
     coeffs = np.polyfit(df_reset['Date_ordinal'], df_reset['Close'], 1)
     df['Trend'] = coeffs[0] * df.index.map(pd.Timestamp.toordinal) + coeffs[1]
+
+    # Buy/Hold/Sell Signal based on Moving Average Crossover
+    latest_ma_5 = df['MA_5'].iloc[-1]
+    latest_ma_25 = df['MA_25'].iloc[-1]
+    if latest_ma_5 > latest_ma_25:
+        df['Signal'] = 'Buy'
+    elif latest_ma_5 < latest_ma_25:
+        df['Signal'] = 'Sell'
+    else:
+        df['Signal'] = 'Hold'
+    
     return df
 
 # ----------- Load Data -----------
@@ -65,6 +76,14 @@ df = add_analytics(df)
 last_30 = df.tail(30)
 financials = load_fundamentals(ticker_symbol)
 q_eps, y_eps = load_eps_history(ticker_symbol)
+
+# ----------- Display Rolling Ticker List at the Top ----------- 
+# You can include tickers from top movers or top activity manually, or fetch from a service.
+ticker_list = ['GME', 'AAPL', 'MSFT', 'TSLA', 'AMZN']  # Placeholder
+st.markdown("""
+    <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;"> 
+    Top Movers: {} </marquee>
+    """.format(', '.join(ticker_list)), unsafe_allow_html=True)
 
 # ----------- Price Chart (3-Year) -----------
 st.subheader("📈 Price Chart (3-Year)")
@@ -152,6 +171,11 @@ with col2:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
         st.warning("Annual EPS data unavailable.")
+
+# ----------- Buy/Hold/Sell Signal ----------- 
+st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
+signal = df['Signal'].iloc[-1]  # Get the latest signal
+st.markdown(f"**Signal:** {signal}")
 
 # ----------- CSV Download -----------
 st.download_button(
