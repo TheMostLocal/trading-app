@@ -66,49 +66,33 @@ q_eps, y_eps = load_eps_history(ticker)
 top_movers = [
     {"symbol": "GME", "price": 24.75, "percent_change": 3.75},
     {"symbol": "AAPL", "price": 157.85, "percent_change": -0.45},
-    {"symbol": "AMZN", "price": 145.32, "percent_change": 1.22},
-    {"symbol": "TSLA", "price": 307.14, "percent_change": -1.57}
+    {"symbol": "AMZN", "price": 134.23, "percent_change": 2.65},
 ]
 
-top_movers_html = ''.join([
-    f'<div class="top-movers-item"><span>{m["symbol"]}: '
-    f'<span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>'
-    for m in top_movers
-])
-
-st.markdown(f"""
+# Create a rolling ticker list for the top movers
+st.markdown("""
+    <div style="overflow-x:auto; white-space: nowrap; font-size: 20px;">
+        <div class="top-movers">
+            {}
+        </div>
+    </div>
     <style>
-        .top-movers-header {{
-            font-size: 24px;
+        .top-movers-item {
+            display: inline-block;
+            padding-right: 20px;
             font-weight: bold;
-            color: #1E90FF;
-            position: sticky;
-            top: 0;
-            background-color: #fff;
-            z-index: 10;
-            padding: 10px;
-        }}
-        .top-movers-item {{
-            font-size: 18px;
-            padding: 5px;
-        }}
-        .up {{color: green;}}
-        .down {{color: red;}}
+        }
+        .up {
+            color: green;
+        }
+        .down {
+            color: red;
+        }
     </style>
-    <div class="top-movers-header">
-        Top Movers:
-    </div>
-    <div class="top-movers-list">
-        {top_movers_html}
-    </div>
-""", unsafe_allow_html=True)
-
-# ----------- Price Table (Reversed) -----------
-st.subheader("📅 Historical Price Table (Last 30 Days)")
-st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']].iloc[::-1])
+""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>' for m in top_movers])), unsafe_allow_html=True)
 
 # ----------- Price Chart with Trend & MAs -----------
-st.subheader("📈 Price Chart with Trend & MAs")
+st.subheader(f"📈 {ticker} Price Chart with Trend & MAs")
 
 price_chart_data = df.reset_index()
 
@@ -120,55 +104,35 @@ price_line = base.mark_line(color='white', strokeWidth=3).encode(
     y=alt.Y('Close:Q', scale=alt.Scale(domain=[0, price_chart_data['Close'].max() * 1.1]), title='Price')
 )
 
-ma_5 = base.mark_line(color='#5A9BD5', strokeDash=[5, 3], size=3).encode(
-    y='MA_5:Q', tooltip=['Date:T', 'Close:Q', 'MA_5:Q']
-)
-ma_25 = base.mark_line(color='#888888', strokeDash=[3, 3], size=3).encode(
-    y='MA_25:Q', tooltip=['Date:T', 'Close:Q', 'MA_25:Q']
-)
-ma_200 = base.mark_line(color='#FF9933', opacity=0.5, size=3).encode(
-    y='MA_200:Q', tooltip=['Date:T', 'Close:Q', 'MA_200:Q']
-)
-trend_line = base.mark_line(color='orange', size=2).encode(
-    y='Trend:Q', tooltip=['Date:T', 'Trend:Q']
-)
+ma_5 = base.mark_line(color='blue', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_5", type="quantitative", title="5-day MA")).encode(y='MA_5:Q')
+ma_25 = base.mark_line(color='green', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_25", type="quantitative", title="25-day MA")).encode(y='MA_25:Q')
+ma_200 = base.mark_line(color='red', strokeDash=[5, 3], size=3, tooltip=alt.Tooltip(field="MA_200", type="quantitative", title="200-day MA")).encode(y='MA_200:Q')
+trend = base.mark_line(color='#FF9933', opacity=0.5, size=3, tooltip=alt.Tooltip(field="Trend", type="quantitative", title="Trend")).encode(y='Trend:Q')
 
-# Add legend for moving averages and trend line
-st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend_line).properties(height=400), use_container_width=True)
+st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
 
-# ----------- Buy/Sell/Hold Signal ----------- 
-# Placeholder for the signal logic (you can adjust this)
-buy_sell_hold_signal = "Buy"  # Example placeholder value
+# ----------- Price Sentiment ----------- 
+# Placeholder for Sentiment (could be based on fundamental analysis or technical indicators)
+sentiment = "Buy"  # In real scenario, it could be computed using some indicators
+st.markdown(f"**Sentiment:** {sentiment}", unsafe_allow_html=True)
 
-st.subheader("📊 Buy/Sell/Hold Signal")
-st.write(f"Signal: **{buy_sell_hold_signal}**")
+# ----------- Historical Price Data (Latest at top) -----------
+st.subheader("📅 Historical Price Data (Last 30 Days)")
 
-# ----------- Daily Volume Chart ----------- 
-st.subheader("📊 Daily Volume (Last 30 Days)")
+last_30_sorted = last_30[['Open', 'High', 'Low', 'Close', 'Volume']].iloc[::-1]  # Latest at top
 
-avg_volume = last_30['Volume'].mean()
-volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2").encode(
-    x='Date:T',
-    y='Volume:Q'
-)
+# Add Average Price Stats
+avg_prices = last_30[['Open', 'High', 'Low', 'Close']].mean()
+st.markdown(f"**Average Prices:** Open: ${avg_prices['Open']:.2f}, High: ${avg_prices['High']:.2f}, Low: ${avg_prices['Low']:.2f}, Close: ${avg_prices['Close']:.2f}")
 
-st.altair_chart(volume_chart.properties(height=200), use_container_width=True)
-st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
+st.dataframe(last_30_sorted)
 
-# ----------- Financial Metrics ----------- 
-st.subheader("💵 Key Financial Metrics")
-# Ensure numeric values are handled as numbers
-for key, value in financials.items():
-    if isinstance(value, str):
-        try:
-            financials[key] = float(value.replace(",", "").replace("$", "").replace("%", ""))
-        except ValueError:
-            pass  # If conversion fails, keep the value as string
+# ----------- Financial Metrics Table ----------- 
+st.subheader("📊 Financial Metrics")
+financial_metrics = pd.DataFrame.from_dict(financials, orient='index', columns=["Value"])
+st.dataframe(financial_metrics)
 
-financial_metrics = pd.DataFrame.from_dict(financials, orient='index', columns=["Value"]).sort_values(by="Value", ascending=False)
-st.table(financial_metrics)
-
-# ----------- EPS Display ----------- 
+# ----------- Earnings Per Share (EPS) ----------- 
 st.subheader("🧾 Earnings Per Share (EPS)")
 
 col1, col2 = st.columns(2)
@@ -187,10 +151,18 @@ with col2:
     else:
         st.warning("Annual EPS data unavailable.")
 
+# ----------- Daily Volume Chart ----------- 
+st.subheader("📊 Daily Volume (Last 30 Days)")
+
+volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2").encode(
+    x='Date:T',
+    y='Volume:Q'
+)
+
+st.altair_chart(volume_chart.properties(height=200), use_container_width=True)
+st.caption(f"🔻 Average Volume: {int(last_30['Volume'].mean()):,}")
+
 # ----------- CSV Download Button -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
-    data=df.to_csv().encode('utf-8'),
-    file_name=f'{ticker}_stock_data.csv',
-    mime='text/csv',
-)
+    data
