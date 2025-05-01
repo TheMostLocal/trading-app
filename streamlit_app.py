@@ -5,15 +5,15 @@ import numpy as np
 import altair as alt
 from datetime import datetime, timedelta
 
+# Set page configuration
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
 st.title("📊 Stock Tracker Dashboard")
 
-# ----------- Sidebar Navigation ----------- 
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ("Stock Dashboard", "Options & Implied Volatility", "Earnings Calendar"))
+# ----------- Hamburger Menu ----------- 
+menu = st.selectbox("Select Page", ["Stock Dashboard", "Options & Implied Volatility", "Earnings Calendar"], key="menu")
 
 # ----------- Stock Dashboard ----------- 
-if page == "Stock Dashboard":
+if menu == "Stock Dashboard":
     # ----------- Ticker Selection -----------
     ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
 
@@ -208,12 +208,10 @@ if page == "Stock Dashboard":
         mime='text/csv',
     )
 
-# ----------- Options & Implied Volatility Page ----------- 
-elif page == "Options & Implied Volatility":
-    st.title("📈 Options & Implied Volatility")
-    st.markdown("Here you can see the options data and implied volatility for the selected stock.")
-    
-    ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "AAPL").upper()
+# ----------- Options & Implied Volatility ----------- 
+elif menu == "Options & Implied Volatility":
+    st.title("🛠️ Options & Implied Volatility")
+    ticker_symbol = st.text_input("Enter Stock Ticker:", "AAPL").upper()
 
     @st.cache_data(ttl=3600)
     def load_options_data(ticker):
@@ -239,13 +237,12 @@ elif page == "Options & Implied Volatility":
     else:
         st.write("No options data available for this ticker.")
 
-# ----------- Earnings Calendar Page ----------- 
-elif page == "Earnings Calendar":
+# ----------- Earnings Calendar ----------- 
+elif menu == "Earnings Calendar":
     st.title("📅 Earnings Calendar")
     st.markdown("Here you can see the earnings calendar for upcoming earnings reports.")
     
     # Placeholder for earnings calendar data
-    # You can use APIs or data sources that offer earnings calendar data
     earnings_calendar_data = pd.DataFrame({
         'Ticker': ['AAPL', 'GOOG', 'TSLA'],
         'Date': ['2025-05-01', '2025-05-02', '2025-05-03'],
