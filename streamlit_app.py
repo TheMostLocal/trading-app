@@ -77,13 +77,52 @@ last_30 = df.tail(30)
 financials = load_fundamentals(ticker_symbol)
 q_eps, y_eps = load_eps_history(ticker_symbol)
 
-# ----------- Display Rolling Ticker List at the Top ----------- 
-# You can include tickers from top movers or top activity manually, or fetch from a service.
-ticker_list = ['GME', 'AAPL', 'MSFT', 'TSLA', 'AMZN']  # Placeholder
+# ----------- Top Movers Section ----------- 
+# Placeholder for Top Movers (these would be dynamically fetched in a real app)
+top_movers = [
+    {"symbol": "GME", "price": 24.75, "percent_change": 3.75},
+    {"symbol": "AAPL", "price": 157.85, "percent_change": -0.45},
+    {"symbol": "AMZN", "price": 145.32, "percent_change": 1.22},
+    {"symbol": "TSLA", "price": 307.14, "percent_change": -1.57}
+]
+
 st.markdown("""
-    <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;"> 
-    Top Movers: {} </marquee>
-    """.format(', '.join(ticker_list)), unsafe_allow_html=True)
+    <style>
+        .top-movers-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1E90FF;
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            z-index: 10;
+            padding: 10px;
+        }
+        .top-movers-item {
+            font-size: 18px;
+            padding: 5px;
+        }
+        .up {color: green;}
+        .down {color: red;}
+    </style>
+    <div class="top-movers-header">
+        Top Movers:
+    </div>
+    <div class="top-movers-list">
+        {}
+    </div>
+""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>' for m in top_movers]), unsafe_allow_html=True)
+
+# ----------- Price and Percentage Change for Selected Stock ----------- 
+latest_price = df['Close'].iloc[-1]
+price_change = ((latest_price - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
+price_color = "green" if price_change > 0 else "red"
+
+st.markdown(f"""
+    <div style="font-size:36px; color:{price_color}; text-align:left; padding-top:10px;">
+        {ticker_symbol} - ${latest_price:.2f} ({price_change:.2f}%)
+    </div>
+""", unsafe_allow_html=True)
 
 # ----------- Price Chart (3-Year) -----------
 st.subheader("📈 Price Chart (3-Year)")
@@ -111,27 +150,17 @@ ma_200 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).
 
 st.altair_chart((line_chart + ma_5 + ma_25 + ma_200).interactive(), use_container_width=True)
 
-# ----------- Volume Chart -----------
-st.subheader("📊 Daily Volume (Last 30 Days)")
+# ----------- Buy/Hold/Sell Signal ----------- 
+st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
+signal = df['Signal'].iloc[-1]  # Get the latest signal
+st.markdown(f"**Signal:** {signal}")
 
-volume_chart_data = last_30.reset_index()
-avg_volume = last_30['Volume'].mean()
+# ----------- Financial Metrics Table -----------
+st.subheader("💵 Key Financial Metrics")
 
-volume_base = alt.Chart(volume_chart_data).encode(x='Date:T')
-
-bars = volume_base.mark_bar(color="#4A90E2").encode(
-    y=alt.Y('Volume:Q', title='Volume'),
-    tooltip=['Date:T', 'Volume:Q']
-)
-
-avg_line = volume_base.mark_rule(color='red', strokeDash=[4, 2]).encode(
-    y=alt.Y('Volume:Q')
-).transform_calculate(
-    Volume=str(avg_volume)
-)
-
-st.altair_chart((bars + avg_line).properties(height=200), use_container_width=True)
-st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
+metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
+metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
+st.dataframe(metrics_df)
 
 # ----------- Historical Price Table (Sorted) -----------
 st.subheader("📅 Historical Price Table (Last 30 Days)")
@@ -145,13 +174,6 @@ st.markdown(f"""
 - **Average Low:** ${last_30['Low'].mean():.2f}  
 - **Average Close:** ${last_30['Close'].mean():.2f}
 """)
-
-# ----------- Financial Metrics Table -----------
-st.subheader("💵 Key Financial Metrics")
-
-metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
-metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
-st.dataframe(metrics_df)
 
 # ----------- EPS Display -----------
 st.subheader("🧾 Earnings Per Share (EPS)")
@@ -172,15 +194,7 @@ with col2:
     else:
         st.warning("Annual EPS data unavailable.")
 
-# ----------- Buy/Hold/Sell Signal ----------- 
-st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
-signal = df['Signal'].iloc[-1]  # Get the latest signal
-st.markdown(f"**Signal:** {signal}")
-
 # ----------- CSV Download -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
-    data=df.to_csv().encode('utf-8'),
-    file_name=f'{ticker_symbol.lower()}_stock_data.csv',
-    mime='text/csv',
-)
+    data=df.to_csv().encode('
