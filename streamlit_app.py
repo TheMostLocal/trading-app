@@ -4,22 +4,24 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-st.set_page_config(page_title="GameStop (GME) Stock Tracker", layout="wide")
-st.title("📊 GameStop (GME) Stock - Last 30 Days")
+st.set_page_config(page_title="Stock Tracker", layout="wide")
+
+# ----------- Input for Dynamic Ticker Name ---------
+ticker_input = st.text_input("Enter Ticker Symbol", "GME").upper()
 
 # ----------- Load Data with Caching -----------
 @st.cache_data(ttl=3600)
-def load_price_data():
-    df = yf.download("GME", period="200d")
+def load_price_data(ticker):
+    df = yf.download(ticker, period="200d")
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [col[0] for col in df.columns]
     return df
 
 @st.cache_data(ttl=3600)
-def load_fundamentals():
-    ticker = yf.Ticker("GME")
-    info = ticker.info
-    bs = ticker.balance_sheet
+def load_fundamentals(ticker):
+    ticker_obj = yf.Ticker(ticker)
+    info = ticker_obj.info
+    bs = ticker_obj.balance_sheet
     try:
         dta_ratio = round(bs.loc["Total Liab"][0] / bs.loc["Total Assets"][0], 2)
     except Exception:
@@ -31,11 +33,11 @@ def load_fundamentals():
     }
 
 @st.cache_data(ttl=3600)
-def load_eps_history():
-    ticker = yf.Ticker("GME")
+def load_eps_history(ticker):
+    ticker_obj = yf.Ticker(ticker)
     try:
-        q_eps = ticker.quarterly_earnings
-        y_eps = ticker.earnings
+        q_eps = ticker_obj.quarterly_earnings
+        y_eps = ticker_obj.earnings
     except Exception:
         q_eps = pd.DataFrame()
         y_eps = pd.DataFrame()
@@ -54,18 +56,18 @@ def add_analytics(df):
     return df
 
 # ----------- Load Data -----------
-df = load_price_data()
+df = load_price_data(ticker_input)
 df = add_analytics(df)
 last_30 = df.tail(30)
-financials = load_fundamentals()
-q_eps, y_eps = load_eps_history()
+financials = load_fundamentals(ticker_input)
+q_eps, y_eps = load_eps_history(ticker_input)
 
 # ----------- Price Table -----------
-st.subheader("📅 Historical Price Table (Last 30 Days)")
+st.subheader(f"📅 Historical Price Table (Last 30 Days) - {ticker_input}")
 st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']])
 
 # ----------- Altair Chart: Price + Trend + MAs -----------
-st.subheader("📈 Price Chart with Trend & MAs")
+st.subheader(f"📈 Price Chart with Trend & MAs - {ticker_input}")
 
 price_chart_data = last_30.reset_index()
 
@@ -84,7 +86,7 @@ trend = base.mark_line(color='#FF9933', opacity=0.5).encode(y='Trend:Q')
 st.altair_chart((price_line + ma_5 + ma_25 + trend).properties(height=400), use_container_width=True)
 
 # ----------- Average Volume Chart -----------
-st.subheader("📊 Daily Volume (Last 30 Days)")
+st.subheader(f"📊 Daily Volume (Last 30 Days) - {ticker_input}")
 
 avg_volume = last_30['Volume'].mean()
 volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2").encode(
@@ -98,12 +100,12 @@ st.altair_chart(volume_chart.properties(height=200), use_container_width=True)
 st.caption(f"🔻 Average Volume: {int(avg_volume):,}")
 
 # ----------- Financials Summary -----------
-st.subheader("💵 Key Financial Metrics")
+st.subheader(f"💵 Key Financial Metrics - {ticker_input}")
 for k, v in financials.items():
     st.markdown(f"**{k}:** {v}")
 
 # ----------- EPS Display -----------
-st.subheader("🧾 Earnings Per Share (EPS)")
+st.subheader(f"🧾 Earnings Per Share (EPS) - {ticker_input}")
 
 col1, col2 = st.columns(2)
 
@@ -125,6 +127,6 @@ with col2:
 st.download_button(
     label="⬇️ Download full dataset as CSV",
     data=df.to_csv().encode('utf-8'),
-    file_name='gme_stock_data.csv',
+    file_name=f'{ticker_input}_stock_data.csv',
     mime='text/csv',
 )
