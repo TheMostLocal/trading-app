@@ -4,11 +4,11 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-st.set_page_config(page_title="Stock Dashboard", layout="wide")
-st.title("📊 Stock Tracker Dashboard")
+# Set page config
+st.set_page_config(page_title="Stock Tracker", layout="wide")
 
-# ----------- Ticker Selection -----------
-ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
+# Title
+st.title("📊 Stock Tracker - Last 3 Years")
 
 # ----------- Load Data with Caching -----------
 @st.cache_data(ttl=3600)
@@ -20,62 +20,43 @@ def load_price_data(ticker):
 
 @st.cache_data(ttl=3600)
 def load_fundamentals(ticker):
-    ticker_obj = yf.Ticker(ticker)
-    info = ticker_obj.info
+    stock = yf.Ticker(ticker)
+    info = stock.info
+    try:
+        dta_ratio = round(stock.balance_sheet.loc["Total Liab"][0] / stock.balance_sheet.loc["Total Assets"][0], 2)
+    except Exception:
+        dta_ratio = "N/A"
     return {
-        "Market Cap": f"${info.get('marketCap', 0):,}",
-        "Trailing P/E": info.get("trailingPE", "N/A"),
-        "Forward P/E": info.get("forwardPE", "N/A"),
-        "PEG Ratio": info.get("pegRatio", "N/A"),
-        "Price/Sales (TTM)": info.get("priceToSalesTrailing12Months", "N/A"),
-        "Price/Book (MRQ)": info.get("priceToBook", "N/A"),
         "EPS (TTM)": info.get("trailingEps", "N/A"),
         "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
-        "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
-        "Return on Equity (ROE)": info.get("returnOnEquity", "N/A"),
-        "Operating Margin": info.get("operatingMargins", "N/A")
+        "Debt-to-Assets Ratio": dta_ratio,
+        "Market Cap": f"${info.get('marketCap', 0):,}" if info.get("marketCap") else "N/A",
+        "PE Ratio": info.get("trailingPE", "N/A"),
+        "Dividend Yield": f"{info.get('dividendYield', 'N/A') * 100 if info.get('dividendYield') else 'N/A'}%" 
     }
 
 @st.cache_data(ttl=3600)
 def load_eps_history(ticker):
-    ticker_obj = yf.Ticker(ticker)
+    stock = yf.Ticker(ticker)
     try:
-        q_eps = ticker_obj.quarterly_earnings
-        y_eps = ticker_obj.earnings
+        q_eps = stock.quarterly_earnings
+        y_eps = stock.earnings
     except Exception:
         q_eps = pd.DataFrame()
         y_eps = pd.DataFrame()
     return q_eps, y_eps
 
-# ----------- Indicator Calculations -----------
+# ----------- Calculate Indicators -----------
 def add_analytics(df):
     df['MA_5'] = df['Close'].rolling(window=5).mean()
     df['MA_25'] = df['Close'].rolling(window=25).mean()
     df['MA_200'] = df['Close'].rolling(window=200).mean()
-
+    
     df_reset = df.reset_index()
     df_reset['Date_ordinal'] = df_reset['Date'].map(pd.Timestamp.toordinal)
     coeffs = np.polyfit(df_reset['Date_ordinal'], df_reset['Close'], 1)
     df['Trend'] = coeffs[0] * df.index.map(pd.Timestamp.toordinal) + coeffs[1]
-
-    # Buy/Hold/Sell Signal based on Moving Average Crossover
-    latest_ma_5 = df['MA_5'].iloc[-1]
-    latest_ma_25 = df['MA_25'].iloc[-1]
-    if latest_ma_5 > latest_ma_25:
-        df['Signal'] = 'Buy'
-    elif latest_ma_5 < latest_ma_25:
-        df['Signal'] = 'Sell'
-    else:
-        df['Signal'] = 'Hold'
-    
     return df
-
-# ----------- Load Data -----------
-df = load_price_data(ticker_symbol)
-df = add_analytics(df)
-last_30 = df.tail(30)
-financials = load_fundamentals(ticker_symbol)
-q_eps, y_eps = load_eps_history(ticker_symbol)
 
 # ----------- Top Movers Section ----------- 
 # Placeholder for Top Movers (these would be dynamically fetched in a real app)
@@ -111,93 +92,100 @@ st.markdown("""
     <div class="top-movers-list">
         {}
     </div>
-""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>' for m in top_movers]), unsafe_allow_html=True)
+""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>' for m in top_movers])), unsafe_allow_html=True)
 
-# ----------- Price and Percentage Change for Selected Stock ----------- 
-latest_price = df['Close'].iloc[-1]
-price_change = ((latest_price - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
-price_color = "green" if price_change > 0 else "red"
+# ----------- Input Stock Ticker -----------
+ticker_input = st.text_input("Enter Ticker Symbol:", value="GME").upper()
 
-st.markdown(f"""
-    <div style="font-size:36px; color:{price_color}; text-align:left; padding-top:10px;">
-        {ticker_symbol} - ${latest_price:.2f} ({price_change:.2f}%)
-    </div>
-""", unsafe_allow_html=True)
+# ----------- Load Data -----------
+df = load_price_data(ticker_input)
+df = add_analytics(df)
+financials = load_fundamentals(ticker_input)
+q_eps, y_eps = load_eps_history(ticker_input)
 
-# ----------- Price Chart (3-Year) -----------
-st.subheader("📈 Price Chart (3-Year)")
+# ----------- Historical Price Table -----------
+st.subheader("📅 Historical Price Table (Last 3 Years)")
+st.dataframe(df[['Open', 'High', 'Low', 'Close', 'Volume']].sort_index(ascending=False))
+
+# ----------- Average Price Calculations -----------
+average_prices = {
+    "Average Open": df['Open'].mean(),
+    "Average High": df['High'].mean(),
+    "Average Low": df['Low'].mean(),
+    "Average Close": df['Close'].mean()
+}
+
+st.markdown("### Average Price Data:")
+st.write(average_prices)
+
+# ----------- Buy/Sell/Hold Signal ----------- 
+# Just an example using a simple moving average crossover strategy (this could be more sophisticated)
+def buy_sell_signal(df):
+    if df['MA_5'].iloc[-1] > df['MA_25'].iloc[-1]:
+        return "Buy"
+    elif df['MA_5'].iloc[-1] < df['MA_25'].iloc[-1]:
+        return "Sell"
+    else:
+        return "Hold"
+
+signal = buy_sell_signal(df)
+st.markdown(f"### Buy/Sell/Hold Signal: **{signal}**")
+
+# ----------- Price Chart with Trend & MAs -----------
+st.subheader("📈 Price Chart with Trend & MAs")
 
 price_chart_data = df.reset_index()
 
-line_chart = alt.Chart(price_chart_data).mark_line().encode(
-    x='Date:T',
-    y=alt.Y('Close:Q', title='Price'),
-    color=alt.value('white'),
-    tooltip=['Date:T', 'Close:Q', 'MA_5:Q', 'MA_25:Q', 'MA_200:Q']
-).properties(height=400)
-
-ma_5 = alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4,2]).encode(
-    x='Date:T', y='MA_5:Q'
+base = alt.Chart(price_chart_data).encode(
+    x='Date:T'
 )
 
-ma_25 = alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4,2]).encode(
-    x='Date:T', y='MA_25:Q'
+price_line = base.mark_line(color='white', strokeWidth=3).encode(
+    y=alt.Y('Close:Q', scale=alt.Scale(domain=[0, price_chart_data['Close'].max() * 1.1]), title='Price')
 )
 
-ma_200 = alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4,2]).encode(
-    x='Date:T', y='MA_200:Q'
-)
+ma_5 = base.mark_line(color='blue', strokeDash=[5, 3], size=3).encode(y='MA_5:Q')
+ma_25 = base.mark_line(color='orange', strokeDash=[3, 3], size=3).encode(y='MA_25:Q')
+ma_200 = base.mark_line(color='green', strokeDash=[1, 1], size=3).encode(y='MA_200:Q')
+trend = base.mark_line(color='#FF9933', opacity=0.5).encode(y='Trend:Q')
 
-st.altair_chart((line_chart + ma_5 + ma_25 + ma_200).interactive(), use_container_width=True)
+st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
 
-# ----------- Buy/Hold/Sell Signal ----------- 
-st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
-signal = df['Signal'].iloc[-1]  # Get the latest signal
-st.markdown(f"**Signal:** {signal}")
-
-# ----------- Financial Metrics Table -----------
+# ----------- Financials Summary ----------- 
 st.subheader("💵 Key Financial Metrics")
+financial_data = {
+    "Market Cap": financials["Market Cap"],
+    "EPS (TTM)": financials["EPS (TTM)"],
+    "Revenue (TTM)": financials["Revenue (TTM)"],
+    "PE Ratio": financials["PE Ratio"],
+    "Dividend Yield": financials["Dividend Yield"],
+    "Debt-to-Assets Ratio": financials["Debt-to-Assets Ratio"]
+}
+st.table(pd.DataFrame(financial_data.items(), columns=["Metric", "Value"]))
 
-metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
-metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
-st.dataframe(metrics_df)
-
-# ----------- Historical Price Table (Sorted) -----------
-st.subheader("📅 Historical Price Table (Last 30 Days)")
-st.dataframe(last_30[['Open', 'High', 'Low', 'Close', 'Volume']].sort_index(ascending=False))
-
-# ----------- Average OHLC Metrics -----------
-st.subheader("📉 Average Price Metrics (Last 30 Days)")
-st.markdown(f"""
-- **Average Open:** ${last_30['Open'].mean():.2f}  
-- **Average High:** ${last_30['High'].mean():.2f}  
-- **Average Low:** ${last_30['Low'].mean():.2f}  
-- **Average Close:** ${last_30['Close'].mean():.2f}
-""")
-
-# ----------- EPS Display -----------
+# ----------- EPS Display ----------- 
 st.subheader("🧾 Earnings Per Share (EPS)")
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("**Last 8 Quarters EPS:**")
-    if q_eps is not None and not q_eps.empty:
+    if not q_eps.empty:
         st.table(q_eps.head(8)[['Earnings']])
     else:
         st.warning("Quarterly EPS data unavailable.")
 
 with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
-    if y_eps is not None and not y_eps.empty:
+    if not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
         st.warning("Annual EPS data unavailable.")
 
-# ----------- CSV Download -----------
+# ----------- CSV Download Button -----------
 st.download_button(
     label="⬇️ Download full dataset as CSV",
     data=df.to_csv().encode('utf-8'),
-    file_name=f'{ticker_symbol}_stock_data.csv',
+    file_name=f'{ticker_input}_stock_data.csv',
     mime='text/csv',
 )
