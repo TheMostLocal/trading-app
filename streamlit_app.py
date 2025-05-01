@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -122,8 +122,26 @@ st.altair_chart(volume_chart.properties(height=200), use_container_width=True)
 
 # ----------- Financial Metrics ----------- 
 st.subheader("💵 Key Financial Metrics")
-financial_metrics = pd.DataFrame.from_dict(financials, orient='index', columns=["Value"]).sort_values(by="Value", ascending=False)
-st.table(financial_metrics)
+# Ensure all values that can be converted to numbers are converted
+# Handle the case where values might be 'N/A' or string-based
+cleaned_financials = {}
+for key, value in financials.items():
+    try:
+        # Try to convert to float, if not possible, keep as is (for strings like "N/A")
+        cleaned_financials[key] = float(value) if isinstance(value, (int, float)) else value
+    except ValueError:
+        cleaned_financials[key] = value
+
+# Convert to DataFrame and sort values
+financial_metrics = pd.DataFrame.from_dict(cleaned_financials, orient='index', columns=["Value"])
+
+# Convert any strings to NaN for sorting and handle
+financial_metrics['Value'] = pd.to_numeric(financial_metrics['Value'], errors='coerce')
+
+# Sort by value, descending
+financial_metrics_sorted = financial_metrics.sort_values(by="Value", ascending=False)
+
+st.table(financial_metrics_sorted)
 
 # ----------- EPS Display ----------- 
 st.subheader("🧾 Earnings Per Share (EPS)")
@@ -179,4 +197,4 @@ st.markdown("""
             color: red;
         }
     </style>
-""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m["percent_change"]:.2f}%)</span></span></div>' for m in top_movers])), unsafe_allow_html=True)
+""".format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price"]} ({m
