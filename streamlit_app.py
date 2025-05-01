@@ -78,34 +78,34 @@ price_line = base.mark_line(color='white', strokeWidth=3).encode(
 
 ma_5 = base.mark_line(color='blue', strokeDash=[5, 3], size=3).encode(
     y='MA_5:Q',
-    tooltip=['Date:T', 'MA_5:Q']
+    tooltip=[alt.Tooltip('Date:T', title='Date'),
+             alt.Tooltip('Close:Q', title='Price'),
+             alt.Tooltip('MA_5:Q', title='5-day MA')]
 )
 
 ma_25 = base.mark_line(color='green', strokeDash=[5, 3], size=3).encode(
     y='MA_25:Q',
-    tooltip=['Date:T', 'MA_25:Q']
+    tooltip=[alt.Tooltip('Date:T', title='Date'),
+             alt.Tooltip('Close:Q', title='Price'),
+             alt.Tooltip('MA_25:Q', title='25-day MA')]
 )
 
 ma_200 = base.mark_line(color='red', strokeDash=[5, 3], size=3).encode(
     y='MA_200:Q',
-    tooltip=['Date:T', 'MA_200:Q']
+    tooltip=[alt.Tooltip('Date:T', title='Date'),
+             alt.Tooltip('Close:Q', title='Price'),
+             alt.Tooltip('MA_200:Q', title='200-day MA')]
 )
 
 trend = base.mark_line(color='#FF9933', opacity=0.5).encode(
     y='Trend:Q',
-    tooltip=['Date:T', 'Trend:Q']
+    tooltip=[alt.Tooltip('Date:T', title='Date'),
+             alt.Tooltip('Close:Q', title='Price'),
+             alt.Tooltip('Trend:Q', title='Trend')]
 )
 
-# Add legend
-ma_legend = alt.Chart(pd.DataFrame({
-    'MA': ['5-day MA', '25-day MA', '200-day MA'],
-    'Color': ['blue', 'green', 'red']
-})).mark_point(filled=True, size=100).encode(
-    color='Color:N',
-    shape='MA:N'
-).properties(width=0)
-
-st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend + ma_legend).properties(height=400), use_container_width=True)
+# Combining all into one chart
+st.altair_chart((price_line + ma_5 + ma_25 + ma_200 + trend).properties(height=400), use_container_width=True)
 
 # ----------- Average Volume Chart ----------- 
 st.subheader(f"📊 Daily Volume (Last 30 Days) - {ticker_input}")
@@ -115,7 +115,9 @@ avg_volume = last_30['Volume'].mean()
 # Volume chart styled like price chart
 volume_chart = alt.Chart(price_chart_data).mark_bar(color="#4A90E2", opacity=0.6).encode(
     x='Date:T',
-    y=alt.Y('Volume:Q', title='Volume')
+    y=alt.Y('Volume:Q', title='Volume'),
+    tooltip=[alt.Tooltip('Date:T', title='Date'),
+             alt.Tooltip('Volume:Q', title='Volume')]
 ) + alt.Chart(price_chart_data).mark_rule(color="red", strokeDash=[4,2]).encode(
     y=alt.value(avg_volume)
 )
@@ -138,14 +140,14 @@ with col1:
     if isinstance(q_eps, pd.DataFrame) and not q_eps.empty:
         st.table(q_eps.head(8)[['Earnings']])
     else:
-        st.warning("Quarterly EPS data unavailable.")
+        st.warning("Quarterly EPS data unavailable. Please check if the data exists on Yahoo Finance.")
 
 with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
     if isinstance(y_eps, pd.DataFrame) and not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
     else:
-        st.warning("Annual EPS data unavailable.")
+        st.warning("Annual EPS data unavailable. Please check if the data exists on Yahoo Finance.")
 
 # ----------- CSV Download Button -----------
 st.download_button(
