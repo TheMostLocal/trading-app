@@ -33,7 +33,8 @@ def load_fundamentals(ticker):
         "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
         "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
         "Return on Equity (ROE)": info.get("returnOnEquity", "N/A"),
-        "Operating Margin": info.get("operatingMargins", "N/A")
+        "Operating Margin": info.get("operatingMargins", "N/A"),
+        "Implied Volatility": f"{info.get('impliedVolatility', 'N/A')}"
     }
 
 @st.cache_data(ttl=3600)
@@ -80,10 +81,25 @@ q_eps, y_eps = load_eps_history(ticker_symbol)
 # ----------- Display Rolling Ticker List at the Top ----------- 
 # You can include tickers from top movers or top activity manually, or fetch from a service.
 ticker_list = ['GME', 'AAPL', 'MSFT', 'TSLA', 'AMZN']  # Placeholder
+
+# Get the daily price change and percent change for each stock in the list
+ticker_data = []
+for ticker in ticker_list:
+    stock_data = yf.download(ticker, period="2d")  # Get the last 2 days of data
+    price_change = stock_data['Close'].iloc[-1] - stock_data['Close'].iloc[-2]  # Price change in dollars
+    percent_change = (price_change / stock_data['Close'].iloc[-2]) * 100  # Percent change
+    ticker_data.append({
+        "symbol": ticker,
+        "price_change": price_change,
+        "percent_change": percent_change
+    })
+
+# Create the ticker marquee with price change and percent change
 st.markdown("""
     <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;"> 
-    Top Movers: {} </marquee>
-    """.format(', '.join(ticker_list)), unsafe_allow_html=True)
+    {} 
+    </marquee>
+    """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}">{m["price_change"]:+.2f} (${m["percent_change"]:+.2f}%)</span></span></div>' for m in ticker_data])), unsafe_allow_html=True)
 
 # ----------- Price Chart (3-Year) -----------
 st.subheader("📈 Price Chart (3-Year)")
@@ -174,8 +190,6 @@ with col2:
     st.markdown("**Annual EPS (Last 4 Years):**")
     if y_eps is not None and not y_eps.empty:
         st.table(y_eps.tail(4)[['Earnings']])
-    else:
-        st.warning("Annual EPS data unavailable.")
 
 # ----------- CSV Download -----------
 st.download_button(
