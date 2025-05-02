@@ -190,11 +190,6 @@ if menu == "Stock Dashboard":
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
 
-    st.subheader("💵 Key Financial Metrics")
-    metrics_df = pd.DataFrame.from_dict(financials, orient='index', columns=['Value'])
-    metrics_df = metrics_df.reset_index().rename(columns={'index': 'Metric'})
-    st.dataframe(metrics_df)
-
     st.subheader("🧾 Earnings Per Share (EPS)")
     col1, col2 = st.columns(2)
     with col1:
@@ -220,7 +215,7 @@ if menu == "Stock Dashboard":
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
     st.title("\U0001F6E0\uFE0F Options & Implied Volatility")
-    ticker_symbol = st.text_input("Enter Stock Ticker:", "AAPL").upper()
+    ticker_symbol = st.text_input("Enter Stock Ticker:", "GME").upper()
     ticker_obj = yf.Ticker(ticker_symbol)
 
     if not ticker_obj.options:
