@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from datetime import datetime, timedelta
+from scipy.stats import norm
 
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
 st.title("📊 Stock Tracker Dashboard")
@@ -34,7 +35,6 @@ def load_fundamentals(ticker):
         "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
         "Return on Equity (ROE)": info.get("returnOnEquity", "N/A"),
         "Operating Margin": info.get("operatingMargins", "N/A"),
-        "Implied Volatility": info.get("impliedVolatility", "N/A")
     }
 
 @st.cache_data(ttl=3600)
@@ -73,6 +73,22 @@ def add_analytics(df):
         df['Signal'] = 'Hold'
 
     return df
+# ---------- Black-Scholes Functions ----------
+def black_scholes_greeks(S, K, T, r, sigma, option_type="call"):
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    
+    if option_type == "call":
+        delta = norm.cdf(d1)
+    else:
+        delta = -norm.cdf(-d1)
+
+    gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
+    vega = S * norm.pdf(d1) * np.sqrt(T) / 100
+    theta = - (S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T))
+    rho = K * T * np.exp(-r * T) * norm.cdf(d2 if option_type == "call" else -d2) / 100
+
+    return delta, gamma, vega, theta, rho
 
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
@@ -95,6 +111,11 @@ if menu == "Stock Dashboard":
     last_30 = df.tail(30)
     financials = load_fundamentals(ticker_symbol)
     q_eps, y_eps = load_eps_history(ticker_symbol)
+    if 'latest_iv' in st.session_state:
+        financials['Implied Volatility (IV)'] = f"{st.session_state['latest_iv']:.2%}"
+    st.subheader("\U0001F4B5 Key Financial Metrics")
+    st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
+
 
     ticker_list = ['QQQ', 'SPY', 'NVDA','AAPL','MSFT', 'TSLA', 'AMZN']
     ticker_data = []
@@ -197,33 +218,62 @@ if menu == "Stock Dashboard":
     )
 
 # ---------- Options Page ----------
-elif menu == "Options & Implied Volatility":
-    st.title("🛠️ Options & Implied Volatility")
+if menu == "Options & Implied Volatility":
+    st.title("\U0001F6E0\uFE0F Options & Implied Volatility")
     ticker_symbol = st.text_input("Enter Stock Ticker:", "AAPL").upper()
+    ticker_obj = yf.Ticker(ticker_symbol)
 
-    @st.cache_data(ttl=3600)
-    def load_options_data(ticker):
-        ticker_obj = yf.Ticker(ticker)
-        try:
-            options = ticker_obj.options
-            options_data = []
-            for expiry in options:
-                opt_data = ticker_obj.option_chain(expiry)
-                calls = opt_data.calls[['strike', 'lastPrice', 'bid', 'ask', 'impliedVolatility']]
-                puts = opt_data.puts[['strike', 'lastPrice', 'bid', 'ask', 'impliedVolatility']]
-                calls['type'] = 'Call'
-                puts['type'] = 'Put'
-                options_data.append(pd.concat([calls, puts]))
-            return pd.concat(options_data)
-        except Exception as e:
-            st.warning(f"Could not retrieve options data: {e}")
-            return pd.DataFrame()
-
-    options_data = load_options_data(ticker_symbol)
-    if not options_data.empty:
-        st.write(options_data)
+    if not ticker_obj.options:
+        st.warning("No options data available.")
     else:
-        st.write("No options data available for this ticker.")
+        expiry = st.selectbox("Select Expiration Date", ticker_obj.options, key="expiry")
+        option_type = st.radio("Option Type", ["call", "put"], horizontal=True)
+        chain = ticker_obj.option_chain(expiry)
+        options_df = chain.calls if option_type == "call" else chain.puts
+
+        # Select nearest ATM
+        spot_price = ticker_obj.history(period="1d")['Close'].iloc[-1]
+        options_df['diff'] = np.abs(options_df['strike'] - spot_price)
+        nearest = options_df.sort_values('diff').iloc[0]
+        K = nearest['strike']
+        market_price = (nearest['bid'] + nearest['ask']) / 2
+
+        T = (datetime.strptime(expiry, "%Y-%m-%d") - datetime.now()).days / 365
+        r = 0.05
+
+        def implied_volatility(S, K, T, r, market_price, option_type):
+            from scipy.optimize import brentq
+            def objective(sigma):
+                d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+                d2 = d1 - sigma * np.sqrt(T)
+                if option_type == "call":
+                    price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+                else:
+                    price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+                return price - market_price
+            try:
+                return brentq(objective, 0.0001, 3)
+            except:
+                return np.nan
+
+        iv = implied_volatility(spot_price, K, T, r, market_price, option_type)
+        delta, gamma, vega, theta, rho = black_scholes_greeks(spot_price, K, T, r, iv, option_type)
+
+        st.markdown(f"**Selected Expiry:** {expiry}")
+        st.markdown(f"**Strike Price (ATM):** {K}")
+        st.markdown(f"**Implied Volatility:** {iv:.2%}")
+
+        st.subheader("\u03B3 Greeks")
+        greeks_data = {
+            "Delta": delta,
+            "Gamma": gamma,
+            "Vega": vega,
+            "Theta": theta,
+            "Rho": rho
+        }
+        st.dataframe(pd.DataFrame(greeks_data.items(), columns=["Greek", "Value"]))
+
+        st.session_state['latest_iv'] = iv
 
 # ---------- Earnings Calendar Page ----------
 elif menu == "Earnings Calendar":
