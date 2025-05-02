@@ -154,11 +154,8 @@ if menu == "Stock Dashboard":
         pct = (diff / prev) * 100
         color = "#00FF00" if diff > 0 else "#FF4B4B"
     
-        ticker_items += f"""
-            <span style='margin-right: 2rem; color: {color}; font-family: monospace; font-size: 16px;'>
-                {ticker}: {current:.2f} ({diff:+.2f}, {pct:+.2f}%)
-            </span>
-        """
+        ticker_items += f"<span style='margin-right: 2rem; color: {color}; font-family: monospace; font-size: 16px;'>{ticker}: {current:.2f} ({diff:+.2f}, {pct:+.2f}%)</span>"
+
 
     # Scrolling ticker HTML with animation
     scroll_html = f"""
