@@ -122,6 +122,30 @@ def calculate_fibonacci_targets(df):
         low
     ]
     return levels
+COMMODITIES = {
+    "Gold": "GC=F",
+    "Silver": "SI=F",
+    "Crude Oil": "CL=F",
+    "Natural Gas": "NG=F",
+    "Copper": "HG=F",
+    "Corn": "ZC=F",
+    "Wheat": "ZW=F",
+    "Soybeans": "ZS=F"
+}
+def get_commodity_performance():
+    data = {}
+    for name, symbol in COMMODITIES.items():
+        try:
+            df = yf.download(symbol, period="2d", interval="1d", progress=False)
+            if len(df) >= 2:
+                change = ((df['Close'][-1] - df['Close'][-2]) / df['Close'][-2]) * 100
+                price = df['Close'][-1]
+                data[name] = {"Price": price, "Change (%)": change}
+        except Exception as e:
+            st.warning(f"Error loading data for {name}: {e}")
+    return pd.DataFrame.from_dict(data, orient='index')
+
+
 
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
@@ -149,7 +173,7 @@ if menu == "Stock Dashboard":
     st.subheader("\U0001F4B5 Key Financial Metrics")
     st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
 
-    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME","BTC", "VIX"]
+    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME"]
     data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
     latest = data.iloc[-1]
     previous = data.iloc[-2]
@@ -251,6 +275,10 @@ if menu == "Stock Dashboard":
     - **Average Low:** ${last_30['Low'].mean():.2f}  
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
+    st.subheader("📊 Commodities Performance (Daily)")
+    commodities_df = get_commodity_performance()
+    st.dataframe(commodities_df.style.format({"Price": "${:,.2f}", "Change (%)": "{:+.2f}%"}))
+
 
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
