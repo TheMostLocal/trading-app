@@ -133,7 +133,16 @@ def calculate_fibonacci_targets(df):
         low
     ]
     return levels
-
+def get_stock_data(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        todays_data = stock.history(period='1d')
+        last_close = stock.history(period='2d').iloc[0]['Close']
+        price = todays_data['Close'].iloc[-1]
+        change = ((price - last_close) / last_close) * 100
+        return round(price, 2), round(change, 2)
+    except Exception as e:
+        return None, None
 
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
@@ -264,31 +273,33 @@ if menu == "Stock Dashboard":
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
     # ------------------ COMMODITIES SECTION ------------------ #
-def get_commodity_performance():
-    data = {}
-    for name, symbol in COMMODITIES.items():
-        try:
-            df = yf.download(symbol, period="5d", interval="1d", progress=False)
-            df = df.dropna()
-            if len(df) >= 2:
-                latest = df["Close"].iloc[-1]
-                previous = df["Close"].iloc[-2]
-                change = ((latest - previous) / previous) * 100
-                data[name] = {"Price": latest, "Change (%)": change}
-            else:
-                data[name] = {"Price": None, "Change (%)": None}
-        except Exception as e:
-            st.warning(f"⚠️ Error loading data for {name} ({symbol}): {e}")
-    return pd.DataFrame.from_dict(data, orient='index')
+st.subheader("🛢️ Commodities")
+commodities = {
+    "Gold": "GC=F",
+    "Silver": "SI=F",
+    "Crude Oil": "CL=F",
+    "Natural Gas": "NG=F",
+    "Copper": "HG=F",
+    "Wheat": "ZW=F",
+    "Corn": "ZC=F",
+    "Soybeans": "ZS=F"
+}
 
+commodity_data = []
+for name, symbol in commodities.items():
+    price, change = get_stock_data(symbol)
+    commodity_data.append({"Commodity": name, "Price": price, "Change (%)": change})
 
-st.subheader("🌾 Commodities Performance (Daily)")
-commodities_df = get_commodity_performance()
-st.dataframe(commodities_df.style.format({
-    "Price": "${:,.2f}",
-    "Change (%)": "{:+.2f}%"
-}))
-
+commodities_df = pd.DataFrame(commodity_data)
+commodities_df = commodities_df.apply(pd.to_numeric, errors='ignore')
+st.dataframe(
+    commodities_df.style.format({
+        "Price": lambda x: f"${x:.2f}" if pd.notnull(x) else "N/A",
+        "Change (%)": lambda x: f"{x:.2f}%" if pd.notnull(x) else "N/A"
+    })
+)
+# ---------- FOOTER ----------
+st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
