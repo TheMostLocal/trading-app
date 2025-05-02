@@ -181,32 +181,6 @@ if menu == "Stock Dashboard":
     }}
     </style>
     """
-    ticker_html = """
-    <style>
-    #ticker-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        background-color: #0E1117;
-        padding: 10px 20px;
-        z-index: 9999;
-        border-bottom: 1px solid #444;
-    }
-    .ticker-item {
-        display: inline-block;
-        margin-right: 2rem;
-        font-family: monospace;
-        font-size: 16px;
-    }
-    </style>
-
-    <div id="ticker-container">
-    """
-    for symbol, price, change, pct in ticker_items:  # your list of tuples
-        color = "#00FF00" if change >= 0 else "#FF4B4B"
-        ticker_html += f"<span class='ticker-item' style='color:{color};'>{symbol}: {price:.2f} ({change:+.2f}, {pct:+.2f}%)</span>"
-    ticker_html += "</div><br><br><br>"  # push page content down
 
     st.markdown(scroll_html, unsafe_allow_html=True)
 
