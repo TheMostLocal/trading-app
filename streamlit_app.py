@@ -24,6 +24,18 @@ def load_price_data(ticker, period="3y"):
 def load_fundamentals(ticker):
     ticker_obj = yf.Ticker(ticker)
     info = ticker_obj.info
+    def format_number(value):
+        try:
+            if abs(value) >= 1e9:
+                return f"${value/1e9:.2f}B"
+            elif abs(value) >= 1e6:
+                return f"${value/1e6:.2f}M"
+            elif abs(value) >= 1e3:
+                return f"${value/1e3:.2f}K"
+            else:
+                return f"${value:.2f}"
+        except:
+            return "N/A"
     return {
         "Market Cap": f"${info.get('marketCap', 0):,}",
         "Trailing P/E": info.get("trailingPE", "N/A"),
@@ -136,9 +148,6 @@ if menu == "Stock Dashboard":
         financials['Implied Volatility (IV)'] = f"{st.session_state['latest_iv']:.2%}"
     st.subheader("\U0001F4B5 Key Financial Metrics")
     st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
-
-
-    st.markdown("### 📈 Market Movers")
 
     tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN"]
     data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
