@@ -141,29 +141,42 @@ if menu == "Stock Dashboard":
     st.markdown("### 📈 Market Movers")
 
     tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN"]
-    ticker_data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
+    data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
+    latest = data.iloc[-1]
+    previous = data.iloc[-2]
 
-    latest_prices = ticker_data.iloc[-1]
-    prev_prices = ticker_data.iloc[-2]
-
-    ticker_html = "<div style='display: flex; flex-wrap: wrap; gap: 1.5rem;'>"
-
+    # Build ticker HTML
+    ticker_items = ""
     for ticker in tickers:
-        latest = latest_prices[ticker]
-        prev = prev_prices[ticker]
-        change = latest - prev
-        pct_change = (change / prev) * 100
-        color = "#00FF00" if change > 0 else "#FF4B4B"
+        current = latest[ticker]
+        prev = previous[ticker]
+        diff = current - prev
+        pct = (diff / prev) * 100
+        color = "#00FF00" if diff > 0 else "#FF4B4B"
     
-        ticker_html += f"""
-            <div style='font-family: monospace; font-size: 16px; color: {color};'>
-                {ticker}: {latest:.2f} ({change:+.2f}, {pct_change:+.2f}%)
-            </div>
+        ticker_items += f"""
+            <span style='margin-right: 2rem; color: {color}; font-family: monospace; font-size: 16px;'>
+                {ticker}: {current:.2f} ({diff:+.2f}, {pct:+.2f}%)
+            </span>
         """
 
-    ticker_html += "</div>"
+    # Scrolling ticker HTML with animation
+    scroll_html = f"""
+    <div style="width: 100%; overflow: hidden;">
+        <div style="display: inline-block; white-space: nowrap; animation: ticker 20s linear infinite;">
+            {ticker_items}
+        </div>
+    </div>
 
-    st.markdown(ticker_html, unsafe_allow_html=True)
+    <style>
+    @keyframes ticker {{
+        0% {{ transform: translateX(100%); }}
+        100% {{ transform: translateX(-100%); }}
+    }}
+    </style>
+    """
+
+    st.markdown(scroll_html, unsafe_allow_html=True)
 
     st.subheader(f"📈 Price Chart ({selected_tf})")
     show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
