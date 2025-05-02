@@ -214,24 +214,30 @@ if menu == "Stock Dashboard":
 
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
-    st.title("\U0001F6E0\uFE0F Options & Implied Volatility")
+    st.title("🛠️ Options & Implied Volatility")
     ticker_symbol = st.text_input("Enter Stock Ticker:", "GME").upper()
     ticker_obj = yf.Ticker(ticker_symbol)
 
     if not ticker_obj.options:
         st.warning("No options data available.")
     else:
-        expiry = st.selectbox("Select Expiration Date", ticker_obj.options, key="expiry")
+        # Default to expiration closest to 30 days
+        today = datetime.today()
+        target_days = 30
+        expiry_dates = [datetime.strptime(date, "%Y-%m-%d") for date in ticker_obj.options]
+        expiry = min(expiry_dates, key=lambda x: abs((x - today).days - target_days)).strftime("%Y-%m-%d")
+
+        expiry = st.selectbox("Select Expiration Date", ticker_obj.options, index=ticker_obj.options.index(expiry), key="expiry")
         option_type = st.radio("Option Type", ["call", "put"], horizontal=True)
         chain = ticker_obj.option_chain(expiry)
         options_df = chain.calls if option_type == "call" else chain.puts
 
         # Select nearest ATM
-        spot_price = ticker_obj.history(period="1d")['Close'].iloc[-1]
-        options_df['diff'] = np.abs(options_df['strike'] - spot_price)
-        nearest = options_df.sort_values('diff').iloc[0]
-        K = nearest['strike']
-        market_price = (nearest['bid'] + nearest['ask']) / 2
+        spot_price = ticker_obj.history(period="1d")["Close"].iloc[-1]
+        options_df["diff"] = np.abs(options_df["strike"] - spot_price)
+        nearest = options_df.sort_values("diff").iloc[0]
+        K = nearest["strike"]
+        market_price = (nearest["bid"] + nearest["ask"]) / 2
 
         T = (datetime.strptime(expiry, "%Y-%m-%d") - datetime.now()).days / 365
         r = 0.05
@@ -251,11 +257,31 @@ if menu == "Options & Implied Volatility":
             except:
                 return np.nan
 
+        def black_scholes_greeks(S, K, T, r, sigma, option_type):
+            d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+            d2 = d1 - sigma * np.sqrt(T)
+
+            delta = norm.cdf(d1) if option_type == "call" else -norm.cdf(-d1)
+            gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
+            vega = S * norm.pdf(d1) * np.sqrt(T) / 100  # Per 1% change in volatility
+
+            # Theta per day per contract (100 shares)
+            if option_type == "call":
+                theta = ((-S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2)) / 365
+            else:
+                theta = ((-S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) + r * K * np.exp(-r * T) * norm.cdf(-d2)) / 365
+            theta *= 100
+
+            rho = (K * T * np.exp(-r * T) * norm.cdf(d2) / 100) if option_type == "call" else (-K * T * np.exp(-r * T) * norm.cdf(-d2) / 100)
+
+            return delta, gamma, vega, theta, rho
+
         iv = implied_volatility(spot_price, K, T, r, market_price, option_type)
         delta, gamma, vega, theta, rho = black_scholes_greeks(spot_price, K, T, r, iv, option_type)
 
         st.markdown(f"**Selected Expiry:** {expiry}")
         st.markdown(f"**Strike Price (ATM):** {K}")
+        st.markdown(f"**Option Premium (Mid Price):** ${market_price:.2f}")
         st.markdown(f"**Implied Volatility:** {iv:.2%}")
 
         st.subheader("\u03B3 Greeks")
@@ -263,7 +289,7 @@ if menu == "Options & Implied Volatility":
             "Delta": delta,
             "Gamma": gamma,
             "Vega": vega,
-            "Theta": theta,
+            "Theta (per day, per contract)": theta,
             "Rho": rho
         }
         st.dataframe(pd.DataFrame(greeks_data.items(), columns=["Greek", "Value"]))
