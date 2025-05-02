@@ -149,8 +149,8 @@ if menu == "Stock Dashboard":
     st.subheader("\U0001F4B5 Key Financial Metrics")
     st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
 
-    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME","BTC", "VIX"]
-    data = yf.download(tickers, period="1d", interval="1m")["Price"].ffill()
+    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME"]
+    data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
     latest = data.iloc[-1]
     previous = data.iloc[-2]
 
