@@ -270,7 +270,6 @@ if menu == "Options & Implied Volatility":
                 theta = ((-S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) - r * K * np.exp(-r * T) * norm.cdf(d2)) / 365
             else:
                 theta = ((-S * norm.pdf(d1) * sigma) / (2 * np.sqrt(T)) + r * K * np.exp(-r * T) * norm.cdf(-d2)) / 365
-            theta *= 100
 
             rho = (K * T * np.exp(-r * T) * norm.cdf(d2) / 100) if option_type == "call" else (-K * T * np.exp(-r * T) * norm.cdf(-d2) / 100)
 
