@@ -255,7 +255,7 @@ if menu == "Stock Dashboard":
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
     st.title("🛠️ Options & Implied Volatility")
-    ticker_symbol = st.text_input("Enter Stock Ticker:", (ticker_symbol)).upper()
+    ticker_symbol = st.text_input("Enter Stock Ticker:", "AAPL").upper()
     ticker_obj = yf.Ticker(ticker_symbol)
 
     if not ticker_obj.options:
