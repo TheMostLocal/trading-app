@@ -5,6 +5,7 @@ import numpy as np
 import altair as alt
 from datetime import datetime, timedelta
 from scipy.stats import norm
+from scipy.optimize import brentq
 
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
 st.title("📊 Stock Tracker Dashboard")
@@ -90,6 +91,20 @@ def black_scholes_greeks(S, K, T, r, sigma, option_type="call"):
 
     return delta, gamma, vega, theta, rho
 
+def calculate_fibonacci_targets(df):
+    high = df['High'].max()
+    low = df['Low'].min()
+    diff = high - low
+    levels = [
+        high,
+        high - 0.236 * diff,
+        high - 0.382 * diff,
+        high - 0.5 * diff,
+        high - 0.618 * diff,
+        low
+    ]
+    return levels
+
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
     ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
@@ -143,6 +158,7 @@ if menu == "Stock Dashboard":
     show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
     show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
     show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
+    show_fib = st.checkbox("Show Fibonacci Targets", value=True)
 
     price_chart_data = df.reset_index()
     base_chart = alt.Chart(price_chart_data).mark_line().encode(
@@ -163,6 +179,12 @@ if menu == "Stock Dashboard":
         layers.append(alt.Chart(price_chart_data).mark_line(color='red', strokeDash=[4, 2]).encode(x='Date:T', y='MA_100:Q'))
     if show_ma_200:
         layers.append(alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4, 2]).encode(x='Date:T', y='MA_200:Q'))
+    
+    if show_fib:
+        fib_levels = calculate_fibonacci_targets(df)
+        for level in fib_levels:
+            fib_line = alt.Chart(price_chart_data).mark_rule(color='gold', strokeDash=[2, 2]).encode(y=alt.datum(level))
+            layers.append(fib_line)
 
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
@@ -190,32 +212,10 @@ if menu == "Stock Dashboard":
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
 
-    st.subheader("🧾 Earnings Per Share (EPS)")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Last 8 Quarters EPS:**")
-        if q_eps is not None and not q_eps.empty:
-            st.table(q_eps.head(8)[['Earnings']])
-        else:
-            st.warning("Quarterly EPS data unavailable.")
-    with col2:
-        st.markdown("**Annual EPS (Last 4 Years):**")
-        if y_eps is not None and not y_eps.empty:
-            st.table(y_eps.tail(4)[['Earnings']])
-        else:
-            st.warning("Annual EPS data unavailable.")
-
-    st.download_button(
-        label="⬇️ Download full dataset as CSV",
-        data=df.to_csv().encode('utf-8'),
-        file_name=f'{ticker_symbol.lower()}_stock_data.csv',
-        mime='text/csv',
-    )
-
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
     st.title("🛠️ Options & Implied Volatility")
-    ticker_symbol = st.text_input("Enter Stock Ticker:", "GME").upper()
+    ticker_symbol = st.text_input("Enter Stock Ticker:", (ticker_symbol)).upper()
     ticker_obj = yf.Ticker(ticker_symbol)
 
     if not ticker_obj.options:
