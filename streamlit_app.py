@@ -7,20 +7,9 @@ from datetime import datetime, timedelta
 from scipy.stats import norm
 from scipy.optimize import brentq
 
-# ------------------ CONFIG ------------------ #
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
 st.title("📊 Stock Tracker Dashboard")
 
-COMMODITIES = {
-    "Gold": "GC=F",
-    "Silver": "SI=F",
-    "Crude Oil": "CL=F",
-    "Natural Gas": "NG=F",
-    "Copper": "HG=F",
-    "Corn": "ZC=F",
-    "Wheat": "ZW=F",
-    "Soybeans": "ZS=F"
-}
 menu = st.selectbox("Select Page", ["Stock Dashboard", "Options & Implied Volatility", "Earnings Calendar"], key="menu")
 
 # ---------- Common Functions ----------
@@ -133,16 +122,6 @@ def calculate_fibonacci_targets(df):
         low
     ]
     return levels
-def get_stock_data(ticker):
-    try:
-        stock = yf.Ticker(ticker)
-        todays_data = stock.history(period='1d')
-        last_close = stock.history(period='2d').iloc[0]['Close']
-        price = todays_data['Close'].iloc[-1]
-        change = ((price - last_close) / last_close) * 100
-        return round(price, 2), round(change, 2)
-    except Exception as e:
-        return None, None
 
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
@@ -170,7 +149,7 @@ if menu == "Stock Dashboard":
     st.subheader("\U0001F4B5 Key Financial Metrics")
     st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
 
-    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME"]
+    tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN", "GME","BTC", "VIX"]
     data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
     latest = data.iloc[-1]
     previous = data.iloc[-2]
@@ -272,34 +251,6 @@ if menu == "Stock Dashboard":
     - **Average Low:** ${last_30['Low'].mean():.2f}  
     - **Average Close:** ${last_30['Close'].mean():.2f}
     """)
-    # ------------------ COMMODITIES SECTION ------------------ #
-st.subheader("🛢️ Commodities")
-commodities = {
-    "Gold": "GC=F",
-    "Silver": "SI=F",
-    "Crude Oil": "CL=F",
-    "Natural Gas": "NG=F",
-    "Copper": "HG=F",
-    "Wheat": "ZW=F",
-    "Corn": "ZC=F",
-    "Soybeans": "ZS=F"
-}
-
-commodity_data = []
-for name, symbol in commodities.items():
-    price, change = get_stock_data(symbol)
-    commodity_data.append({"Commodity": name, "Price": price, "Change (%)": change})
-
-commodities_df = pd.DataFrame(commodity_data)
-commodities_df = commodities_df.apply(pd.to_numeric, errors='ignore')
-st.dataframe(
-    commodities_df.style.format({
-        "Price": lambda x: f"${x:.2f}" if pd.notnull(x) else "N/A",
-        "Change (%)": lambda x: f"{x:.2f}%" if pd.notnull(x) else "N/A"
-    })
-)
-# ---------- FOOTER ----------
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # ---------- Options Page ----------
 if menu == "Options & Implied Volatility":
