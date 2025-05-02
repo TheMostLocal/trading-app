@@ -138,25 +138,34 @@ if menu == "Stock Dashboard":
     st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
 
 
-    ticker_list = ['QQQ', 'SPY', 'NVDA','AAPL','MSFT', 'TSLA', 'AMZN']
-    ticker_data = []
-    for symbol in ticker_list:
-        ticker_obj = yf.Ticker(symbol)
-        data = ticker_obj.history(period="1d")
-        price_change = data['Close'][0] - data['Open'][0]
-        percent_change = (price_change / data['Open'][0]) * 100
-        ticker_data.append({
-            "symbol": symbol,
-            "price_change": price_change,
-            "percent_change": percent_change
-        })
+    import yfinance as yf
 
-    st.markdown("""
-        <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;">
-        {} 
-        </marquee>
-        """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}"> {m["price_change"]:+.2f} ({m["percent_change"]:+.2f}%)</span></span></div>' 
-                            for m in ticker_data if isinstance(m["percent_change"], (float, int))])), unsafe_allow_html=True)
+st.markdown("### 📈 Market Movers")
+
+tickers = ["QQQ", "SPY", "NVDA", "AAPL", "MSFT", "TSLA", "AMZN"]
+ticker_data = yf.download(tickers, period="1d", interval="1m")["Close"].ffill()
+
+latest_prices = ticker_data.iloc[-1]
+prev_prices = ticker_data.iloc[-2]
+
+ticker_html = "<div style='display: flex; flex-wrap: wrap; gap: 1.5rem;'>"
+
+for ticker in tickers:
+    latest = latest_prices[ticker]
+    prev = prev_prices[ticker]
+    change = latest - prev
+    pct_change = (change / prev) * 100
+    color = "#00FF00" if change > 0 else "#FF4B4B"
+    
+    ticker_html += f"""
+        <div style='font-family: monospace; font-size: 16px; color: {color};'>
+            {ticker}: {latest:.2f} ({change:+.2f}, {pct_change:+.2f}%)
+        </div>
+    """
+
+ticker_html += "</div>"
+
+st.markdown(ticker_html, unsafe_allow_html=True)
 
     st.subheader(f"📈 Price Chart ({selected_tf})")
     show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
