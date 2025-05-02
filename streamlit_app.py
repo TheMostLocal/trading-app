@@ -107,15 +107,6 @@ if menu == "Stock Dashboard":
         selected_tf = st.selectbox("Timeframe", list(timeframes.keys()), index=2)
 
     df = load_price_data(ticker_symbol, timeframes[selected_tf])
-    df = add_analytics(df)
-    last_30 = df.tail(30)
-    financials = load_fundamentals(ticker_symbol)
-    q_eps, y_eps = load_eps_history(ticker_symbol)
-    if 'latest_iv' in st.session_state:
-        financials['Implied Volatility (IV)'] = f"{st.session_state['latest_iv']:.2%}"
-    st.subheader("\U0001F4B5 Key Financial Metrics")
-    st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
-
 
     ticker_list = ['QQQ', 'SPY', 'NVDA','AAPL','MSFT', 'TSLA', 'AMZN']
     ticker_data = []
@@ -131,7 +122,7 @@ if menu == "Stock Dashboard":
         })
 
     st.markdown("""
-        <marquee style="font-size:20px;color:#FF6347;white-space:nowrap;">
+        <marquee style="font-size:20px;color:white;white-space:nowrap;">
         {} 
         </marquee>
         """.format(' '.join([f'<div class="top-movers-item"><span>{m["symbol"]}: <span class="{"up" if m["percent_change"] > 0 else "down"}"> {m["price_change"]:+.2f} ({m["percent_change"]:+.2f}%)</span></span></div>' 
@@ -169,6 +160,15 @@ if menu == "Stock Dashboard":
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
     signal = df['Signal'].iloc[-1]
     st.markdown(f"**Signal:** {signal}")
+
+    df = add_analytics(df)
+    last_30 = df.tail(30)
+    financials = load_fundamentals(ticker_symbol)
+    q_eps, y_eps = load_eps_history(ticker_symbol)
+    if 'latest_iv' in st.session_state:
+        financials['Implied Volatility (IV)'] = f"{st.session_state['latest_iv']:.2%}"
+    st.subheader("\U0001F4B5 Key Financial Metrics")
+    st.dataframe(pd.DataFrame.from_dict(financials, orient='index', columns=['Value']).reset_index().rename(columns={'index': 'Metric'}))
 
     st.subheader("📊 Daily Volume (Last 30 Days)")
     volume_chart_data = last_30.reset_index()
