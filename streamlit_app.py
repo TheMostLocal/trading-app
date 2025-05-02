@@ -56,6 +56,12 @@ def add_analytics(df):
     df['MA_100'] = df['Close'].rolling(window=100).mean()
     df['MA_200'] = df['Close'].rolling(window=200).mean()
 
+    df['BB_Mid'] = df['Close'].rolling(window=20).mean()
+    df['BB_Std'] = df['Close'].rolling(window=20).std()
+    df['BB_Upper'] = df['BB_Mid'] + 2 * df['BB_Std']
+    df['BB_Lower'] = df['BB_Mid'] - 2 * df['BB_Std']
+
+
     df_reset = df.reset_index()
     df_reset['Date_ordinal'] = df_reset['Date'].map(pd.Timestamp.toordinal)
     coeffs = np.polyfit(df_reset['Date_ordinal'], df_reset['Close'], 1)
@@ -159,6 +165,7 @@ if menu == "Stock Dashboard":
     show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
     show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
     show_fib = st.checkbox("Show Fibonacci Targets", value=True)
+    show_bb = st.checkbox("Show Bollinger Bands", value=False)
 
     price_chart_data = df.reset_index()
     base_chart = alt.Chart(price_chart_data).mark_line().encode(
@@ -185,6 +192,13 @@ if menu == "Stock Dashboard":
         for level in fib_levels:
             fib_line = alt.Chart(price_chart_data).mark_rule(color='gold', strokeDash=[2, 2]).encode(y=alt.datum(level))
             layers.append(fib_line)
+    if show_bb:
+        band = alt.Chart(price_chart_data).mark_area(opacity=0.2, color='lightblue').encode(
+            x='Date:T',
+            y='BB_Lower:Q',
+            y2='BB_Upper:Q'
+        )
+        layers.append(band)
 
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
