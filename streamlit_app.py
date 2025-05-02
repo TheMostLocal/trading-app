@@ -268,14 +268,19 @@ def get_commodity_performance():
     data = {}
     for name, symbol in COMMODITIES.items():
         try:
-            df = yf.download(symbol, period="2d", interval="1d", progress=False)
+            df = yf.download(symbol, period="5d", interval="1d", progress=False)
+            df = df.dropna()
             if len(df) >= 2:
-                change = ((df['Close'][-1] - df['Close'][-2]) / df['Close'][-2]) * 100
-                price = df['Close'][-1]
-                data[name] = {"Price": price, "Change (%)": change}
+                latest = df["Close"].iloc[-1]
+                previous = df["Close"].iloc[-2]
+                change = ((latest - previous) / previous) * 100
+                data[name] = {"Price": latest, "Change (%)": change}
+            else:
+                data[name] = {"Price": None, "Change (%)": None}
         except Exception as e:
-            st.warning(f"Error loading data for {name}: {e}")
+            st.warning(f"⚠️ Error loading data for {name} ({symbol}): {e}")
     return pd.DataFrame.from_dict(data, orient='index')
+
 
 st.subheader("🌾 Commodities Performance (Daily)")
 commodities_df = get_commodity_performance()
