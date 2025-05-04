@@ -174,13 +174,13 @@ if menu == "Stock Dashboard":
     st.markdown(scroll_html, unsafe_allow_html=True)
 
     st.subheader(f"📈 Price Chart ({selected_tf})")
-    show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
-    show_ma_25 = st.checkbox("Show 25-Day MA", value=True)
-    show_ma_50 = st.checkbox("Show 50-Day MA", value=True)
+    show_ma_10 = st.checkbox("Show 10-Day MA", value=False)
+    show_ma_25 = st.checkbox("Show 25-Day MA", value=False)
+    show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
     show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
     show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
     show_fib = st.checkbox("Show Fibonacci Targets", value=False)
-    show_bb = st.checkbox("Show Bollinger Bands", value=True)
+    show_bb = st.checkbox("Show Bollinger Bands", value=False)
 
     price_chart_data = df.reset_index()
     base_chart = alt.Chart(price_chart_data).mark_line().encode(
