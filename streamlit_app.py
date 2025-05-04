@@ -40,7 +40,6 @@ def load_fundamentals(ticker):
         "Market Cap": f"${info.get('marketCap', 0):,}",
         "Beta": info.get("beta","N/A"),
         "Trailing P/E": info.get("trailingPE", "N/A"),
-        "Forward P/E": info.get("forwardPE", "N/A"),
         "Price/Sales (TTM)": info.get("priceToSalesTrailing12Months", "N/A"),
         "Price/Book (MRQ)": info.get("priceToBook", "N/A"),
         "EPS (TTM)": info.get("trailingEps", "N/A"),
