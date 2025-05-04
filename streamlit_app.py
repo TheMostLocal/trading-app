@@ -51,17 +51,6 @@ def load_fundamentals(ticker):
         "Operating Margin": info.get("operatingMargins", "N/A"),
     }
 
-@st.cache_data(ttl=3600)
-def load_eps_history(ticker):
-    ticker_obj = yf.Ticker(ticker)
-    try:
-        q_eps = ticker_obj.quarterly_earnings
-        y_eps = ticker_obj.earnings
-    except Exception:
-        q_eps = pd.DataFrame()
-        y_eps = pd.DataFrame()
-    return q_eps, y_eps
-
 def add_analytics(df):
     df['MA_10'] = df['Close'].rolling(window=10).mean()
     df['MA_25'] = df['Close'].rolling(window=25).mean()
