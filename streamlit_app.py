@@ -217,8 +217,8 @@ if menu == "Stock Dashboard":
     if show_bb:
         band = alt.Chart(price_chart_data).mark_area(opacity=0.2, color='lightblue').encode(
             x='Date:T',
-            y='BB_Lower:Q',
-            y2='BB_Upper:Q'
+            y=alt.Y('BB_Lower:Q', axis=None),
+            y2=alt.Y('BB_Upper:Q', axis=None)
         )
         layers.append(band)
        
