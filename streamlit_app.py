@@ -239,8 +239,8 @@ if menu == "Stock Dashboard":
         )
         layers.append(band)
     if show_vwap:
-        vwap = alt.Chart(price_chart_data).mark_line(color='pink', strokeDash=[4, 2].encode(x='Date:T', y='VWAP'))
-        layers.append(vwap)
+        vwap_line = alt.Chart(price_chart_data).mark_line(color='pink', strokeDash=[4, 2].encode(x='Date:T', y='VWAP'))
+        layers.append(vwap_line)
 
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
