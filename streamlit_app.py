@@ -188,11 +188,11 @@ if menu == "Stock Dashboard":
     st.subheader(f"📈 Price Chart ({selected_tf})")
     show_ma_10 = st.checkbox("Show 10-Day MA", value=True)
     show_ma_25 = st.checkbox("Show 25-Day MA", value=True)
-    show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
+    show_ma_50 = st.checkbox("Show 50-Day MA", value=True)
     show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
     show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
-    show_fib = st.checkbox("Show Fibonacci Targets", value=True)
-    show_bb = st.checkbox("Show Bollinger Bands", value=False)
+    show_fib = st.checkbox("Show Fibonacci Targets", value=False)
+    show_bb = st.checkbox("Show Bollinger Bands", value=True)
 
     price_chart_data = df.reset_index()
     base_chart = alt.Chart(price_chart_data).mark_line().encode(
@@ -204,13 +204,13 @@ if menu == "Stock Dashboard":
 
     layers = [base_chart]
     if show_ma_10:
-        layers.append(alt.Chart(price_chart_data).mark_line(color='cyan', strokeDash=[4, 2]).encode(x='Date:T', y='MA_10:Q'))
+        layers.append(alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4, 2]).encode(x='Date:T', y='MA_10:Q'))
     if show_ma_25:
         layers.append(alt.Chart(price_chart_data).mark_line(color='orange', strokeDash=[4, 2]).encode(x='Date:T', y='MA_25:Q'))
     if show_ma_50:
         layers.append(alt.Chart(price_chart_data).mark_line(color='purple', strokeDash=[4, 2]).encode(x='Date:T', y='MA_50:Q'))
     if show_ma_100:
-        layers.append(alt.Chart(price_chart_data).mark_line(color='red', strokeDash=[4, 2]).encode(x='Date:T', y='MA_100:Q'))
+        layers.append(alt.Chart(price_chart_data).mark_line(color='yellow', strokeDash=[4, 2]).encode(x='Date:T', y='MA_100:Q'))
     if show_ma_200:
         layers.append(alt.Chart(price_chart_data).mark_line(color='green', strokeDash=[4, 2]).encode(x='Date:T', y='MA_200:Q'))
     
