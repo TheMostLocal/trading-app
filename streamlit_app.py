@@ -133,7 +133,6 @@ if menu == "Stock Dashboard":
     df = add_analytics(df)
     last_30 = df.tail(30)
     financials = load_fundamentals(ticker_symbol)
-    q_eps, y_eps = load_eps_history(ticker_symbol)
     if 'latest_iv' in st.session_state:
         financials['Implied Volatility (IV)'] = f"{st.session_state['latest_iv']:.2%}"
     st.subheader("\U0001F4B5 Key Financial Metrics")
