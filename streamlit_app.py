@@ -190,6 +190,13 @@ if menu == "Stock Dashboard":
         tooltip=['Date:T', 'Close:Q']
     ).properties(height=400)
 
+    # Add color column for volume candles
+    price_chart_data["VolumeColor"] = np.where(
+        price_chart_data["Close"] > price_chart_data["Open"],
+        "green",
+        "red"
+    )
+
     layers = [base_chart]
     if show_ma_10:
         layers.append(alt.Chart(price_chart_data).mark_line(color='blue', strokeDash=[4, 2]).encode(x='Date:T', y='MA_10:Q'))
@@ -214,7 +221,21 @@ if menu == "Stock Dashboard":
             y2='BB_Upper:Q'
         )
         layers.append(band)
+       
+        # Add volume bars with color based on price movement
+    volume_candles = alt.Chart(price_chart_data).mark_bar(opacity=0.4).encode(
+        x='Date:T',
+        y=alt.Y('Volume:Q', axis=alt.Axis(title='Volume')),
+        color=alt.Color('VolumeColor:N', scale=alt.Scale(domain=["green", "red"], range=["green", "red"]), legend=None),
+        tooltip=['Date:T', 'Volume:Q', 'Open:Q', 'Close:Q']
+    ).properties(height=100)
 
+    # Show the price chart + volume candles stacked
+    final_chart = alt.vconcat(
+        alt.layer(*layers).interactive().resolve_scale(y='independent'),
+        volume_candles
+    )
+    st.altair_chart(final_chart, use_container_width=True)
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
