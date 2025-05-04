@@ -6,6 +6,7 @@ import altair as alt
 from datetime import datetime, timedelta
 from scipy.stats import norm
 from scipy.optimize import brentq
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
 st.title("📊 Stock Tracker Dashboard")
@@ -124,6 +125,16 @@ def calculate_fibonacci_targets(df):
     ]
     return levels
 
+def add_vwap(df):
+    df = df.copy()
+    df['date'] = df.index.date  # reset per day
+    df['typical_price'] = (df['high'] + df['low'] + df['close']) / 3
+    df['vp'] = df['typical_price'] * df['volume']
+    df['cumulative_vp'] = df.groupby('date')['vp'].cumsum()
+    df['cumulative_volume'] = df.groupby('date')['volume'].cumsum()
+    df['vwap'] = df['cumulative_vp'] / df['cumulative_volume']
+    return df
+
 # ---------- Stock Dashboard ----------
 if menu == "Stock Dashboard":
     ticker_symbol = st.text_input("Enter Stock Ticker (e.g., GME, AAPL):", "GME").upper()
@@ -191,8 +202,9 @@ if menu == "Stock Dashboard":
     show_ma_50 = st.checkbox("Show 50-Day MA", value=False)
     show_ma_100 = st.checkbox("Show 100-Day MA", value=False)
     show_ma_200 = st.checkbox("Show 200-Day MA", value=False)
-    show_fib = st.checkbox("Show Fibonacci Targets", value=True)
-    show_bb = st.checkbox("Show Bollinger Bands", value=False)
+    show_fib = st.checkbox("Show Fibonacci Targets", value=False)
+    show_bb = st.checkbox("Show Bollinger Bands", value=True)
+    show_vwap=st.checkbox("Show VWAP")
 
     price_chart_data = df.reset_index()
     base_chart = alt.Chart(price_chart_data).mark_line().encode(
@@ -226,6 +238,9 @@ if menu == "Stock Dashboard":
             y2='BB_Upper:Q'
         )
         layers.append(band)
+    if show_vwap:
+        vwap = alt.Chart(price_chart_data).mark_line(color='pink', strokeDash=[4, 2].encode(x='Date:T', y='VWAP'))
+        layers.append(vwap)
 
     st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
