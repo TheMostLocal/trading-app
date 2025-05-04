@@ -46,7 +46,7 @@ def load_fundamentals(ticker):
         "EPS (TTM)": info.get("trailingEps", "N/A"),
         "Revenue (TTM)": f"${info.get('totalRevenue', 0):,}" if info.get("totalRevenue") else "N/A",
         "EBITDA": f"${info.get('ebitda', 0):,}" if info.get("ebitda") else "N/A",
-        "Return on Equity (ROE) %": info.get("returnOnEquity"*100, "N/A"),
+        "Return on Equity (ROE) %": info.get("returnOnEquity", "N/A") * 100,
         "Operating Margin": info.get("operatingMargins", "N/A"),
     }
 
