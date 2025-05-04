@@ -236,7 +236,6 @@ if menu == "Stock Dashboard":
         volume_candles
     )
     st.altair_chart(final_chart, use_container_width=True)
-    st.altair_chart(alt.layer(*layers).interactive(), use_container_width=True)
 
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
     signal = df['Signal'].iloc[-1]
