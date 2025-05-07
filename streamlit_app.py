@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import altair as alt
 from datetime import datetime, timedelta
-from scipy.stats import norm
 from scipy.optimize import brentq
 
 st.set_page_config(page_title="Stock Dashboard", layout="wide")
