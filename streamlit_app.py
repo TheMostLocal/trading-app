@@ -218,39 +218,46 @@ if menu == "Stock Dashboard":
 
         # ---------- Price Prediction ----------
     st.subheader("📈 Price Prediction (Trend + Volume Model)")
-    df_pred = df.dropna().copy()
-    df_pred = df_pred.reset_index()
-    df_pred['Date_ordinal'] = df_pred['Date'].map(pd.Timestamp.toordinal)
 
-    # Add feature: log volume to reduce skewness
+    # Forecast horizon selector
+    forecast_option = st.selectbox(
+        "Select Forecast Horizon:",
+        options=["1 Month", "3 Months", "6 Months", "1 Year"],
+        index=3  # Default to 1 Year
+    )
+    forecast_days = {
+        "1 Month": 30,
+        "3 Months": 90,
+        "6 Months": 180,
+        "1 Year": 365
+    }[forecast_option]
+
+    # Prepare prediction data
+    df_pred = df.copy().dropna().reset_index()
+    df_pred['Date_ordinal'] = df_pred['Date'].map(pd.Timestamp.toordinal)
     df_pred['LogVolume'] = np.log1p(df_pred['Volume'])
 
-    # Build features and target
     X = df_pred[['Date_ordinal', 'LogVolume']]
     y = df_pred['Close']
-
     model = LinearRegression()
     model.fit(X, y)
 
-    # Predict for next 30 days
-    future_dates = [df_pred['Date'].max() + timedelta(days=i) for i in range(1, 31)]
+    future_dates = [df_pred['Date'].max() + timedelta(days=i) for i in range(1, forecast_days + 1)]
     future_df = pd.DataFrame({
         'Date': future_dates,
         'Date_ordinal': [d.toordinal() for d in future_dates],
-        'LogVolume': np.log1p(df_pred['Volume'].iloc[-30:].mean())  # use recent avg volume
+        'LogVolume': np.log1p(df_pred['Volume'].iloc[-30:].mean())
     })
-    pred_prices = model.predict(future_df[['Date_ordinal', 'LogVolume']])
-    future_df['PredictedPrice'] = pred_prices
+    future_df['PredictedPrice'] = model.predict(future_df[['Date_ordinal', 'LogVolume']])
 
-    # Plot actual + predicted
+    # Chart
     pred_chart = alt.Chart(df_pred).mark_line(color="white").encode(
         x='Date:T', y='Close:Q', tooltip=['Date:T', 'Close:Q']
     ) + alt.Chart(future_df).mark_line(color='orange').encode(
         x='Date:T', y='PredictedPrice:Q', tooltip=['Date:T', 'PredictedPrice:Q']
     )
 
-    st.altair_chart(pred_chart.properties(title="Price + 30 Day Forecast", height=300), use_container_width=True)
-
+    st.altair_chart(pred_chart.properties(title="Price + Forecast", height=300), use_container_width=True)
 
     st.subheader(f"💡 {ticker_symbol} Buy/Hold/Sell Signal")
     signal = df['Signal'].iloc[-1]
